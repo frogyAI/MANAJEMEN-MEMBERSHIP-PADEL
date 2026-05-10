@@ -220,14 +220,9 @@ string jamsesi(string namapaket, int pilihan) {
     return "-";
 }
 
+
 void tampilkaninfopaket() {
-    MiloUtils::printHeader("PAKET SESI DI MILO PADEL");
-    cout << "1. SUN   : weekday, jam 06.00-16.00 | Rp 450.000/sesi" << endl;
-    cout << "2. MOON  : weekday, jam 16.00-23.00 | Rp 500.000/sesi" << endl;
-    cout << "3. STAR  : weekend, jam 16.00-23.00 | Rp 650.000/sesi" << endl;
-    MiloUtils::printSeparator();
-    cout << "[FYI] 1 bulan = 4 pertemuan (1x seminggu)" << endl;
-    MiloUtils::printSeparator();
+
 }
 
 void updateHargaDenganReference(int &harga, int bonus) {
@@ -407,121 +402,14 @@ void buatmember(member members[], int &jumlahmember, string username) {
     }
 }
 
+
 void bacasemuadata(member members[], int jumlahmember) {
-    try {
-        ASSERT(jumlahmember > 0, "Data member masih kosong");
-        
-        cout << "===================" << endl;
-        cout << "      SORTING       " << endl;
-        cout << "===================" << endl;
-        cout << "  1. Nama (Z -> A) [std::sort]      " << endl;
-        cout << "  2. ID (1 -> 100) [std::sort]      " << endl;
-        cout << "  3. Harga (Termurah) [std::sort]   " << endl;
-        cout << "  4. Tanpa Sorting                  " << endl;
-        cout << "===================" << endl;
-        cout << "Pilihan: ";
-        
-        int opsi;
-        cin >> opsi;
-        cin.ignore();
-        
-        ASSERT(opsi >= 1 && opsi <= 4, "Pilihan sorting tidak valid");
-        
-        member temp[MAX_MEMBER];
-        for (int i = 0; i < jumlahmember; i++) temp[i] = members[i];
-        
-        if (opsi == 1) {
-            sortNamaDescending(temp, jumlahmember);
-            cout << "\nData diurutkan: Nama (Z -> A) - std::sort" << endl;
-        } else if (opsi == 2) {
-            sortIdAscending(temp, jumlahmember);
-            cout << "\nData diurutkan: ID (1 -> 100) - std::sort" << endl;
-        } else if (opsi == 3) {
-            sortHargaAscending(temp, jumlahmember);
-            cout << "\nData diurutkan: Harga (Termurah) - std::sort" << endl;
-        } else {
-            cout << "\nMenampilkan data tanpa sorting" << endl;
-        }
-        
-        cout << "\n====================================================================================" << endl;
-        cout << "                                  DAFTAR MEMBER PADEL                                 " << endl;
-        cout << "======================================================================================" << endl;
-        cout << left << setw(4) << "ID" 
-             << setw(15) << "Nama member" 
-             << setw(15) << "username"
-             << setw(8)  << "Paket"
-             << setw(10) << "Hari"
-             << setw(12) << "Jam sesi"
-             << setw(10) << "Bulan"
-             << setw(12) << "Total" << endl;
-        cout << "--------------------------------------------------------------------------------" << endl;
-        
-        for (int i = 0; i < jumlahmember; i++) {
-            int totalPertemuan = hitungpertemuan(temp[i].detail.bulanMember);
-            int total = hargapaket(temp[i].namapaket, temp[i].detail.bulanMember);
-            
-            cout << left << setw(4) << temp[i].id
-                 << setw(18) << temp[i].nama
-                 << setw(15) << temp[i].username
-                 << setw(8) << temp[i].namapaket
-                 << setw(12) << temp[i].detail.hari
-                 << setw(12) << temp[i].detail.jamsesi
-                 << setw(10) << (to_string(temp[i].detail.bulanMember) + " bln")
-                 << setw(12) << ("Rp " + to_string(total) + "K") << endl;
-        }
-        cout << "================================================================================" << endl;
-        
-        if (jumlahmember > 0) {
-            cout << "\nMenampilkan info member pertama via pointer:" << endl;
-            demoPointerInternal(&temp[0], 1);
-        }
-        
-    } catch (const PadelException& e) {
-        MiloUtils::printError(e.what());
-    } catch (const exception& e) {
-        MiloUtils::printError("Terjadi kesalahan: " + string(e.what()));
-    }
+
 }
 
+
 void bacadatasaya(member members[], int jumlahmember, string username) {
-    try {
-        bool ditemukan = false;
-        
-        for (int i = 0; i < jumlahmember; i++) {
-            if (members[i].username == username) {
-                int totalPertemuan = hitungpertemuan(members[i].detail.bulanMember);
-                int total = hargapaket(members[i].namapaket, members[i].detail.bulanMember);
-                
-                cout << "\n=====================================" << endl;
-                cout << "             DATA MEMBER ANDA          " << endl;
-                cout << "=======================================" << endl;
-                cout << "ID              : " << members[i].id << endl;
-                cout << "Nama            : " << members[i].nama << endl;
-                cout << "Paket           : " << members[i].namapaket << endl;
-                cout << "Hari            : " << members[i].detail.hari << endl;
-                cout << "Jam sesi        : " << members[i].detail.jamsesi << endl;
-                cout << "Durasi          : " << members[i].detail.bulanMember << " bulan" << endl;
-                cout << "Pertemuan/Bulan : " << PERTEMUAN_PER_BULAN << "x" << endl;
-                cout << "Total Pertemuan : " << totalPertemuan << "x" << endl;
-                cout << "Harga /Sesi     : Rp " << members[i].detail.harga << ".000" << endl;
-                cout << " TOTAL BAYAR   : Rp " << total << ".000 " << endl;
-                cout << "========================================" << endl;
-                
-                cout << "\n[Pointer Demo] Akses data via pointer:" << endl;
-                tampilkanDetailMemberDenganPointer(&members[i]);
-                
-                ditemukan = true;
-                break;
-            }
-        }
-        
-        ASSERT(ditemukan, "BELUM JOIN MEMBER! YUK buat akun dulu");
-        
-    } catch (const PadelException& e) {
-        MiloUtils::printError(e.what());
-    } catch (const exception& e) {
-        MiloUtils::printError("Terjadi kesalahan: " + string(e.what()));
-    }
+
 }
 
 void updatedatamember(member members[], int jumlahmember) {
