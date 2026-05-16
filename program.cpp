@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 using namespace std;
 
 #ifndef MILOUTILS_H
@@ -12,7 +13,7 @@ using namespace std;
 
 namespace MiloUtils {
     void clearScreen() {
-        cout << string(50, '\n');
+
     }
     
     void printHeader(const string& title) {
@@ -63,7 +64,6 @@ namespace MiloUtils {
 
 #endif
 
-
 #define ASSERT(kondisi, pesan) \
     if (!(kondisi)) { \
         stringstream ss; \
@@ -71,7 +71,6 @@ namespace MiloUtils {
            << " | line: " << __LINE__ << " | function: " << __func__; \
         throw runtime_error(ss.str()); \
     }
-
 
 struct user {
     string username;
@@ -92,6 +91,8 @@ struct member {
     string username;
     string namapaket;
     infopaket detail;
+    bool diskon_aktif = false;
+    int nominal_diskon = 0;
 };
 
 #define MAX_MEMBER 100
@@ -120,9 +121,9 @@ int hitungpertemuan(int bulan) {
 }
 
 string infohari(string namapaket) {
-    if (namapaket == "SUN") return "SENIN-JUMAT";
-    else if (namapaket == "MOON") return "SENIN-JUMAT";
-    else if (namapaket == "STAR") return "SABTU-MINGGU";
+    if (namapaket == "SUN") return "Senin-Jumat";
+    else if (namapaket == "MOON") return "Senin-Jumat";
+    else if (namapaket == "STAR") return "Sabtu-Minggu";
     else return "-";
 }
 
@@ -146,9 +147,7 @@ string inputharivalid(string namapaket) {
         try {
             cout << "MAU PADEL DI HARI APA (" << infohari(namapaket) << "): ";
             getline(cin, hari);
-            
             ASSERT(!hari.empty(), "hari tidak boleh kosong");
-            
             if (validasihari(hari, namapaket)) {
                 if (hari.length() > 0) {
                     hari[0] = toupper(hari[0]);
@@ -161,22 +160,21 @@ string inputharivalid(string namapaket) {
         } catch (const PadelException& e) {
             cout << "[!] " << e.what() << " ";
             if (namapaket == "SUN" || namapaket == "MOON")
-                cout << "paket weekday hanya bisa: SENIN-JUMAT" << endl;
+                cout << "paket weekday hanya bisa: Senin-Jumat" << endl;
             else
-                cout << "paket weekend hanya bisa: SABTU&MINGGU" << endl;
+                cout << "paket weekend hanya bisa: Sabtu&Minggu" << endl;
         }
     }
 }
 
 int hargapaket(string namapaket, int bulan) {
     try {
-        ASSERT(bulan >= 0, "durasi tidak boleh negatif");
+        ASSERT(bulan >= 0, "Ddrasi tidak boleh negatif");
         int hargaPerSesi;
         if (namapaket == "SUN") hargaPerSesi = 450;
         else if (namapaket == "MOON") hargaPerSesi = 500;
         else if (namapaket == "STAR") hargaPerSesi = 650;
-        else throw PadelException("paket tidak valid!");
-        
+        else throw PadelException("PAKET TIDAK VALID");
         int totalPertemuan = hitungpertemuan(bulan);
         return hargaPerSesi * totalPertemuan;
     } catch (const PadelException& e) {
@@ -191,8 +189,14 @@ int hargapaket(string namapaket) {
     else return 0;
 }
 
+int hitungDiskonOtomatis(int bulan) {
+    if (bulan >= 6 && bulan <= 8) return 15;
+    else if (bulan >= 9 && bulan <= 12) return 30;
+    return 0;
+}
+
 void infopilihanjam(string namapaket) {
-    cout << "\n--- PILIH JAM SESI (max 1 pilihan) ---" << endl;
+    cout << "\n--- PILIH JAM SESI ---" << endl;
     if (namapaket == "SUN") {
         for (int i = 1; i <= 10; i++)
             cout << i << ". " << (5+i) << ".00-" << (6+i) << ".00" << endl;
@@ -211,7 +215,7 @@ string jamsesi(string namapaket, int pilihan) {
             int start = 15 + pilihan;
             return to_string(start) + ".00-" + to_string(start + 1) + ".00";
         } else {
-            throw PadelException("pilihan jam tidak valid!");
+            throw PadelException("Pilihan jam tidak valid!");
         }
     } catch (const PadelException& e) {
         cout << "[!] " << e.what() << endl;
@@ -220,9 +224,14 @@ string jamsesi(string namapaket, int pilihan) {
     return "-";
 }
 
-
 void tampilkaninfopaket() {
-
+    MiloUtils::printHeader("PAKET SESI DI MILO PADEL");
+    cout << "1. SUN   : weekday, jam 06.00-16.00 | Rp 450.000/sesi" << endl;
+    cout << "2. MOON  : weekday, jam 16.00-23.00 | Rp 500.000/sesi" << endl;
+    cout << "3. STAR  : weekend, jam 16.00-23.00 | Rp 650.000/sesi" << endl;
+    MiloUtils::printSeparator();
+    cout << "[FYI] 1 bulan = 4 pertemuan" << endl;
+    MiloUtils::printSeparator();
 }
 
 void sortNamaDescending(member arr[], int n) {
@@ -239,34 +248,30 @@ void sortIdAscending(member arr[], int n) {
 
 void sortHargaAscending(member arr[], int n) {
     sort(arr, arr + n, [](const member& a, const member& b) {
-        return a.detail.harga < b.detail.harga;
+        int totalA = hargapaket(a.namapaket, a.detail.bulanMember);
+        int totalB = hargapaket(b.namapaket, b.detail.bulanMember);
+        
+        if (a.diskon_aktif) totalA = totalA - (totalA * a.nominal_diskon / 100);
+        if (b.diskon_aktif) totalB = totalB - (totalB * b.nominal_diskon / 100);
+        
+        return totalA < totalB;
     });
 }
 
 int binarySearchID(member *arr, int n, int target) {
-    int low = 0;
-    int high = n - 1;
-    
+    int low = 0, high = n - 1;
     while (low <= high) {
         int mid = low + (high - low) / 2;
-        
-        if (arr[mid].id == target) {
-            return mid;
-        } else if (arr[mid].id < target) {
-            low = mid + 1;
-        } else {
-            high = mid - 1;
-        }
+        if (arr[mid].id == target) return mid;
+        else if (arr[mid].id < target) low = mid + 1;
+        else high = mid - 1;
     }
     return -1;
 }
 
 int linearSearchNama(member *arr, int n, string target) {
-    for (int i = 0; i < n; i++) {
-        if (arr[i].nama == target) {
-            return i;
-        }
-    }
+    for (int i = 0; i < n; i++)
+        if (arr[i].nama == target) return i;
     return -1;
 }
 
@@ -288,24 +293,82 @@ void tampilkanLog() {
     cout << "=====================" << endl;
 }
 
+
+const string FILENAME = "data_member.csv";
+
+void loadMembersFromCSV(member members[], int &jumlahmember) {
+    ifstream file(FILENAME);
+    if (!file.is_open()) {
+        return;
+    }
+    
+    string line;
+    getline(file, line);
+    
+    while (getline(file, line) && jumlahmember < MAX_MEMBER) {
+        stringstream ss(line);
+        string token;
+        member m;
+        
+        getline(ss, token, ','); m.id = stoi(token);
+        getline(ss, token, ','); m.nama = token;
+        getline(ss, token, ','); m.username = token;
+        getline(ss, token, ','); m.namapaket = token;
+        getline(ss, token, ','); m.detail.hari = token;
+        getline(ss, token, ','); m.detail.jamsesi = token;
+        getline(ss, token, ','); m.detail.bulanMember = stoi(token);
+        getline(ss, token, ','); m.detail.harga = stoi(token);
+        getline(ss, token, ','); m.diskon_aktif = (token == "1");
+        getline(ss, token, ','); m.nominal_diskon = stoi(token);
+        
+        members[jumlahmember++] = m;
+    }
+    file.close();
+}
+
+void saveMembersToCSV(member members[], int jumlahmember) {
+    ofstream file(FILENAME);
+    if (!file.is_open()) {
+        cout << "[ERROR] gagal menyimpan ke " << FILENAME << endl;
+        return;
+    }
+    
+    file << "id,nama,username,namapaket,hari,jamsesi,bulanMember,harga,diskon_aktif,nominal_diskon\n";
+    
+    for (int i = 0; i < jumlahmember; i++) {
+        file << members[i].id << ","
+             << members[i].nama << ","
+             << members[i].username << ","
+             << members[i].namapaket << ","
+             << members[i].detail.hari << ","
+             << members[i].detail.jamsesi << ","
+             << members[i].detail.bulanMember << ","
+             << members[i].detail.harga << ","
+             << (members[i].diskon_aktif ? "1" : "0") << ","
+             << members[i].nominal_diskon << "\n";
+    }
+    file.close();
+}
+
 void buatmember(member members[], int &jumlahmember, string username) {
+    MiloUtils::clearScreen();
     try {
         for (int i = 0; i < jumlahmember; i++) {
             if (members[i].username == username) {
-                throw PadelException("MEMBER SUDAH ADA! pilih menu 'lihat data saya' untuk melihat data sendiri.");
+                throw PadelException("MEMBER SUDAH ADA!");
             }
         }
-        
         ASSERT(jumlahmember < MAX_MEMBER, "kapasitas member penuh");
         
         cout << "\n--- BUAT AKUN MEMBER ---" << endl;
         member baru;
-        baru.id = jumlahmember + 1;
+        baru.id = (jumlahmember > 0) ? members[jumlahmember-1].id + 1 : 1;
         baru.username = username;
+        baru.diskon_aktif = false;
+        baru.nominal_diskon = 0;
         
         cout << "NAMA: ";
         getline(cin, baru.nama);
-        
         ASSERT(!baru.nama.empty(), "nama tidak boleh kosong");
         
         tampilkaninfopaket();
@@ -313,7 +376,7 @@ void buatmember(member members[], int &jumlahmember, string username) {
         getline(cin, baru.namapaket);
         
         if (baru.namapaket != "SUN" && baru.namapaket != "MOON" && baru.namapaket != "STAR") {
-            throw PadelException("PAKET TIDAK VALID! Pilih SUN, MOON, atau STAR.");
+            throw PadelException("PAKET TIDAK VALID!");
         }
         
         baru.detail.hari = inputharivalid(baru.namapaket);
@@ -327,13 +390,13 @@ void buatmember(member members[], int &jumlahmember, string username) {
         cout << "\nMAU JOIN BERAPA BULAN: ";
         cin >> baru.detail.bulanMember;
         cin.ignore();
-        
         ASSERT(baru.detail.bulanMember > 0, "durasi harus lebih dari 0 bulan");
         
         baru.detail.harga = hargapaket(baru.namapaket);
-        
         members[jumlahmember] = baru;
         jumlahmember++;
+        
+        saveMembersToCSV(members, jumlahmember);
         
         int totalPertemuan = hitungpertemuan(baru.detail.bulanMember);
         int total = hargapaket(baru.namapaket, baru.detail.bulanMember);
@@ -343,12 +406,200 @@ void buatmember(member members[], int &jumlahmember, string username) {
         cout << "      HARI            : " << baru.detail.hari << endl;
         cout << "      JAM SESI        : " << baru.detail.jamsesi << endl;
         cout << "      DURASI          : " << baru.detail.bulanMember << " bulan" << endl;
-        cout << "      PERTEMUAN /BULAN: " << PERTEMUAN_PER_BULAN << "x" << endl;
         cout << "      TOTAL PERTEMUAN : " << totalPertemuan << "x" << endl;
         cout << "      HARGA /SESI     : Rp " << baru.detail.harga << ".000" << endl;
-        cout << "      TOTAL BAYAR     : Rp " << total << ".000 " << endl;
-        
+        cout << "      TOTAL BAYAR     : Rp " << total << ".000" << endl;
         catatLog("member baru: " + baru.nama + " (ID: " + to_string(baru.id) + ")");
+    } catch (const PadelException& e) {
+        MiloUtils::printError(e.what());
+    } catch (const exception& e) {
+        MiloUtils::printError("TERJADI KESALAHAN: " + string(e.what()));
+    }
+}
+
+void menuTampilData(member members[], int jumlahmember) {
+    MiloUtils::clearScreen();
+    if (jumlahmember == 0) {
+        MiloUtils::printWarning("data member masih kosong!");
+        return;
+    }
+
+    int pilihanUtama;
+    bool exitMenu = false;
+
+    while (!exitMenu) {
+        try {
+            MiloUtils::printHeader("MENU TAMPILAN DATA");
+            cout << "1. SEARCH" << endl;
+            cout << "2. SORT" << endl;
+            cout << "3. KEMBALI" << endl;
+            MiloUtils::printSeparator();
+            cout << "PILIHAN: ";
+            cin >> pilihanUtama;
+            cin.ignore();
+            ASSERT(pilihanUtama >= 1 && pilihanUtama <= 3, "PILIHAN TIDAK VALID");
+
+            if (pilihanUtama == 1) {
+                int pilihanSearch;
+                bool exitSearch = false;
+                while (!exitSearch) {
+                    cout << "\n--- MENU SEARCH ---" << endl;
+                    cout << "1. BERDASARKAN ID" << endl;
+                    cout << "2. BERDASARKAN NAMA" << endl;
+                    cout << "3. KEMBALI" << endl;
+                    cout << "PILIHAN: ";
+                    cin >> pilihanSearch;
+                    cin.ignore();
+                    ASSERT(pilihanSearch >= 1 && pilihanSearch <= 3, "PILIHAN TIDAK VALID");
+
+                    if (pilihanSearch == 1) {
+                        int cariID; cout << "masukkan ID: "; cin >> cariID; cin.ignore();
+                        int idx = -1;
+                        for(int i=0; i<jumlahmember; i++) if(members[i].id == cariID) { idx = i; break; }
+                        if (idx != -1) {
+                            int total = hargapaket(members[idx].namapaket, members[idx].detail.bulanMember);
+                            int totalAkhir = members[idx].diskon_aktif ? total - (total * members[idx].nominal_diskon / 100) : total;
+                            MiloUtils::printSuccess("DATA DITEMUKAN!");
+                            cout << "  ID: " << members[idx].id << " | NAMA: " << members[idx].nama 
+                                 << " | PAKET: " << members[idx].namapaket 
+                                 << " | DISKON: " << (members[idx].diskon_aktif ? to_string(members[idx].nominal_diskon) + "%" : "-")
+                                 << " | TOTAL: Rp " << totalAkhir << "K" << endl;
+                        } else {
+                            MiloUtils::printWarning("ID TIDAK DITEMUKAN.");
+                        }
+                    } else if (pilihanSearch == 2) {
+                        string cariNama; cout << "masukkan Nama: "; getline(cin, cariNama);
+                        int idx = linearSearchNama(members, jumlahmember, cariNama);
+                        if (idx != -1) {
+                            int total = hargapaket(members[idx].namapaket, members[idx].detail.bulanMember);
+                            int totalAkhir = members[idx].diskon_aktif ? total - (total * members[idx].nominal_diskon / 100) : total;
+                            MiloUtils::printSuccess("DATA DITEMUKAN!");
+                            cout << "  ID: " << members[idx].id << " | NAMA: " << members[idx].nama 
+                                 << " | PAKET: " << members[idx].namapaket 
+                                 << " | DISKON: " << (members[idx].diskon_aktif ? to_string(members[idx].nominal_diskon) + "%" : "-")
+                                 << " | TOTAL: Rp " << totalAkhir << "K" << endl;
+                        } else {
+                            MiloUtils::printWarning("NAMA TIDAK DITEMUKAN.");
+                        }
+                    } else if (pilihanSearch == 3) {
+                        exitSearch = true;
+                    }
+                    if (!exitSearch) MiloUtils::pause();
+                }
+            } else if (pilihanUtama == 2) {
+                int pilihanSort;
+                bool exitSort = false;
+                while (!exitSort) {
+                    cout << "\n--- MENU SORT ---" << endl;
+                    cout << "1. NAMA" << endl;
+                    cout << "2. ID" << endl;
+                    cout << "3. HARGA" << endl;
+                    cout << "4. KEMBALI" << endl;
+                    cout << "PILIHAN: ";
+                    cin >> pilihanSort;
+                    cin.ignore();
+                    ASSERT(pilihanSort >= 1 && pilihanSort <= 4, "PILIHAN TIDAK VALID");
+
+                    if (pilihanSort >= 1 && pilihanSort <= 3) {
+                        member temp[MAX_MEMBER];
+                        for(int i=0; i<jumlahmember; i++) temp[i] = members[i];
+
+                        if(pilihanSort == 1) sortNamaDescending(temp, jumlahmember);
+                        else if(pilihanSort == 2) sortIdAscending(temp, jumlahmember);
+                        else if(pilihanSort == 3) sortHargaAscending(temp, jumlahmember);
+
+                        cout << "\n================================================================================" << endl;
+                        cout << left << setw(4) << "ID" << setw(15) << "NAMA" << setw(8) << "PAKET" 
+                             << setw(8) << "BULAN" << setw(10) << "DISKON" << setw(15) << "TOTAL" << endl;
+                        cout << "--------------------------------------------------------------------------------" << endl;
+                        for (int i = 0; i < jumlahmember; i++) {
+                            int total = hargapaket(temp[i].namapaket, temp[i].detail.bulanMember);
+                            int totalAkhir = temp[i].diskon_aktif ? total - (total * temp[i].nominal_diskon / 100) : total;
+                            cout << left << setw(4) << temp[i].id << setw(15) << temp[i].nama 
+                                 << setw(8) << temp[i].namapaket << setw(8) << temp[i].detail.bulanMember
+                                 << setw(10) << (temp[i].diskon_aktif ? to_string(temp[i].nominal_diskon) + "%" : "-")
+                                 << setw(15) << ("Rp " + to_string(totalAkhir) + "K") << endl;
+                        }
+                        cout << "================================================================================" << endl;
+                    } else if (pilihanSort == 4) {
+                        exitSort = true;
+                    }
+                    if (!exitSort) MiloUtils::pause();
+                }
+            } else if (pilihanUtama == 3) {
+                exitMenu = true;
+            }
+        } catch (const PadelException& e) { MiloUtils::printError(e.what()); MiloUtils::pause(); }
+        catch (const exception& e) { MiloUtils::printError("ERROR " + string(e.what())); MiloUtils::pause(); }
+    }
+}
+
+void kelolaDiskonMembership(member members[], int jumlahmember) {
+    MiloUtils::clearScreen();
+    try {
+        vector<int> eligible;
+        for(int i=0; i<jumlahmember; i++) {
+            if(members[i].detail.bulanMember >= 6) eligible.push_back(i);
+        }
+        
+        if(eligible.empty()) {
+            MiloUtils::printWarning("tidak ada member dengan durasi >= 6 bulan.");
+            return;
+        }
+        
+        cout << "\n=== DISKON MEMBERSHIP ===" << endl;
+        cout << "[INFO] KETENTUAN DISKON:" << endl;
+        cout << "1. 6-8 bulan --> diskon 15%" << endl;
+        cout << "2. 9-12 bulan --> diskon 30%" << endl;
+        cout << "\nDAFTAR MEMBER   :" << endl;
+        cout << left << setw(4) << "ID" << setw(15) << "NAMA" << setw(8) << "BULAN" 
+             << setw(15) << "TOTAL AWAL" << endl;
+        cout << "------------------------------------------" << endl;
+        for(int idx : eligible) {
+            int total = hargapaket(members[idx].namapaket, members[idx].detail.bulanMember);
+            cout << left << setw(4) << members[idx].id << setw(15) << members[idx].nama 
+                 << setw(8) << members[idx].detail.bulanMember
+                 << setw(15) << ("Rp " + to_string(total) + "K") << endl;
+        }
+        cout << "------------------------------------------" << endl;
+        
+        cout << "\nmasukkan ID member untuk diberi diskon --> 0 untuk batal: ";
+        int idPilih; cin >> idPilih; cin.ignore();
+        if(idPilih == 0) return;
+        
+        int foundIdx = -1;
+        for(int i=0; i<jumlahmember; i++) {
+            if(members[i].id == idPilih && members[i].detail.bulanMember >= 6) {
+                foundIdx = i;
+                break;
+            }
+        }
+        
+        ASSERT(foundIdx != -1, "ID tidak valid atau durasi < 6 bulan!");
+        
+        int diskon = hitungDiskonOtomatis(members[foundIdx].detail.bulanMember);
+        int total = hargapaket(members[foundIdx].namapaket, members[foundIdx].detail.bulanMember);
+        int totalAkhir = total - (total * diskon / 100);
+        
+        cout << "\n--- KONFIRMASI ---" << endl;
+        cout << "MEMBER: " << members[foundIdx].nama << " (ID: " << members[foundIdx].id << ")" << endl;
+        cout << "DURASI: " << members[foundIdx].detail.bulanMember << " bulan" << endl;
+        cout << "klik 1 untuk ACC, angka lain --> batal: ";
+        
+        int konfirmasi; cin >> konfirmasi; cin.ignore();
+        
+        if(konfirmasi == 1) {
+            members[foundIdx].diskon_aktif = true;
+            members[foundIdx].nominal_diskon = diskon;
+            
+            saveMembersToCSV(members, jumlahmember);
+            
+            cout << "\n[OK] DISKON " << diskon << "% BERHASIL DITERAPKAN!" << endl;
+            cout << "data akhir setelah diskon: Rp " << totalAkhir << ".000" << endl;
+            catatLog("diskon " + to_string(diskon) + "% untuk member ID " + to_string(idPilih));
+        } else {
+            MiloUtils::printWarning("pemberian diskon dibatalkan");
+        }
         
     } catch (const PadelException& e) {
         MiloUtils::printError(e.what());
@@ -357,31 +608,59 @@ void buatmember(member members[], int &jumlahmember, string username) {
     }
 }
 
-
-void bacasemuadata(member members[], int jumlahmember) {
-
-}
-
-
 void bacadatasaya(member members[], int jumlahmember, string username) {
-
+    MiloUtils::clearScreen();
+    try {
+        bool ditemukan = false;
+        for (int i = 0; i < jumlahmember; i++) {
+            if (members[i].username == username) {
+                int totalPertemuan = hitungpertemuan(members[i].detail.bulanMember);
+                int total = hargapaket(members[i].namapaket, members[i].detail.bulanMember);
+                int totalAkhir = members[i].diskon_aktif ? total - (total * members[i].nominal_diskon / 100) : total;
+                
+                cout << "\n=====================================" << endl;
+                cout << "         DATA MEMBER ANDA            " << endl;
+                cout << "=====================================" << endl;
+                cout << "ID              : " << members[i].id << endl;
+                cout << "NAMA            : " << members[i].nama << endl;
+                cout << "PAKET           : " << members[i].namapaket << endl;
+                cout << "HARI            : " << members[i].detail.hari << endl;
+                cout << "JAM SESI        : " << members[i].detail.jamsesi << endl;
+                cout << "DURASI          : " << members[i].detail.bulanMember << " bulan" << endl;
+                cout << "TOTAL PERTEMUAN : " << totalPertemuan << "x" << endl;
+                cout << "HARGA /SESI     : Rp " << members[i].detail.harga << ".000" << endl;
+                if (members[i].diskon_aktif) {
+                    cout << "DISKON          : " << members[i].nominal_diskon << "%" << endl;
+                    cout << "TOTAL BAYAR     : Rp " << totalAkhir << ".000 (setelah diskon)" << endl;
+                } else {
+                    cout << "TOTAL BAYAR     : Rp " << total << ".000" << endl;
+                }
+                cout << "=====================================" << endl;
+                ditemukan = true;
+                break;
+            }
+        }
+        ASSERT(ditemukan, "BELUM JOIN MEMBER!");
+    } catch (const PadelException& e) {
+        MiloUtils::printError(e.what());
+    } catch (const exception& e) {
+        MiloUtils::printError("TERJADI KESALAHAN: " + string(e.what()));
+    }
 }
 
 void updatedatamember(member members[], int jumlahmember) {
+    MiloUtils::clearScreen();
     try {
         ASSERT(jumlahmember > 0, "data member masih kosong");
-        
         cout << "\nDAFTAR MEMBER:" << endl;
         for (int i = 0; i < jumlahmember; i++) {
-            cout << "  [" << members[i].id << "] " << members[i].nama 
-                 << " | PAKET: " << members[i].namapaket << endl;
+            cout << "  [" << members[i].id << "] " << members[i].nama << " | PAKET: " << members[i].namapaket << endl;
         }
         
         int index;
         cout << "\nID yang mau diupdate: ";
         cin >> index;
         cin.ignore();
-        
         ASSERT(index > 0 && index <= jumlahmember, "ID MEMBER TIDAK VALID");
         
         int idx = index - 1;
@@ -405,23 +684,27 @@ void updatedatamember(member members[], int jumlahmember) {
         cin.ignore();
         members[idx].detail.jamsesi = jamsesi(members[idx].namapaket, pilihanJam);
         
-        cout << "MAU JOIN BERAPA BULAN: ";
+        cout << "\nMAU JOIN BERAPA BULAN: ";
         cin >> members[idx].detail.bulanMember;
         cin.ignore();
-        
         ASSERT(members[idx].detail.bulanMember > 0, "durasi harus lebih dari 0 bulan");
         
         members[idx].detail.harga = hargapaket(members[idx].namapaket);
-        
         int totalPertemuan = hitungpertemuan(members[idx].detail.bulanMember);
         int total = hargapaket(members[idx].namapaket, members[idx].detail.bulanMember);
+        int totalAkhir = members[idx].diskon_aktif ? total - (total * members[idx].nominal_diskon / 100) : total;
         
-        MiloUtils::printSuccess("PAKET MEMBER \"" + members[idx].nama + "\" UPDATE BERHASIL!");
+        saveMembersToCSV(members, jumlahmember);
+        
+        MiloUtils::printSuccess("UPDATE BERHASIL!");
         cout << "   TOTAL PERTEMUAN : " << totalPertemuan << "x" << endl;
-        cout << "   TOTAL BAYAR     : Rp " << total << ".000 " << endl;
-        
-        catatLog("update member ID " + to_string(members[idx].id));
-        
+        if (members[idx].diskon_aktif) {
+            cout << "   DISKON          : " << members[idx].nominal_diskon << "%" << endl;
+            cout << "   TOTAL BAYAR     : Rp " << totalAkhir << ".000 (setelah diskon)" << endl;
+        } else {
+            cout << "   TOTAL BAYAR     : Rp " << total << ".000" << endl;
+        }
+        catatLog("Update member ID " + to_string(members[idx].id));
     } catch (const PadelException& e) {
         MiloUtils::printError(e.what());
     } catch (const exception& e) {
@@ -430,10 +713,10 @@ void updatedatamember(member members[], int jumlahmember) {
 }
 
 void deletedatamember(member members[], int &jumlahmember) {
+    MiloUtils::clearScreen();
     try {
         ASSERT(jumlahmember > 0, "data member masih kosong");
-        
-        cout << "\nDAFTAR MEMBER" << endl;
+        cout << "\nDAFTAR MEMBER:" << endl;
         for (int i = 0; i < jumlahmember; i++) {
             cout << "  [" << members[i].id << "] " << members[i].nama << endl;
         }
@@ -442,7 +725,6 @@ void deletedatamember(member members[], int &jumlahmember) {
         cout << "\nID yang mau dihapus: ";
         cin >> index;
         cin.ignore();
-        
         ASSERT(index > 0 && index <= jumlahmember, "ID MEMBER TIDAK VALID");
         
         for (int i = index - 1; i < jumlahmember - 1; i++) {
@@ -450,9 +732,10 @@ void deletedatamember(member members[], int &jumlahmember) {
         }
         jumlahmember--;
         
+        saveMembersToCSV(members, jumlahmember);
+        
         MiloUtils::printSuccess("MEMBER ID " + to_string(index) + " BERHASIL DIHAPUS!");
         catatLog("hapus member ID " + to_string(index));
-        
     } catch (const PadelException& e) {
         MiloUtils::printError(e.what());
     } catch (const exception& e) {
@@ -460,92 +743,8 @@ void deletedatamember(member members[], int &jumlahmember) {
     }
 }
 
-void menuSortingSearching(member members[], int jumlahmember) {
-    if (jumlahmember == 0) {
-        MiloUtils::printWarning("data member masih kosong!");
-        return;
-    }
-
-    int pilihan;
-    bool kembali = false;
-    do {
-        try {
-            MiloUtils::printHeader("MENU SORT & SEARCH");
-            cout << "1. SORTING\n";
-            cout << "2. SEARCHING\n";
-            cout << "3. MENU ADMIN\n";
-            MiloUtils::printSeparator();
-            cout << "pilih menu (1-3): ";
-            cin >> pilihan;
-            cin.ignore();
-            ASSERT(pilihan >= 1 && pilihan <= 3, "pilihan tidak valid");
-
-            if (pilihan == 1) { 
-                member temp[MAX_MEMBER];
-                for(int i=0; i<jumlahmember; i++) temp[i] = members[i];
-
-                cout << "\n--- PILIH JENIS SORT ---\n";
-                cout << "1. NAMA (Z -> A)\n2. ID (1 -> N)\n3. HARGA (termurah)\n4. TANPA SORTING\npilihan: ";
-                int opsiSort; cin >> opsiSort; cin.ignore();
-                ASSERT(opsiSort >= 1 && opsiSort <= 4, "pilihan tidak valid");
-
-                if(opsiSort == 1) { sortNamaDescending(temp, jumlahmember); cout << "DIURUTKAN: NAMA\n"; }
-                else if(opsiSort == 2) { sortIdAscending(temp, jumlahmember); cout << "DIURUTKAN: ID\n"; }
-                else if(opsiSort == 3) { sortHargaAscending(temp, jumlahmember); cout << "DIURUTKAN: HARGA\n"; }
-                else { cout << "tanpa Sorting\n"; }
-
-                cout << "\n====================================================================================\n";
-                cout << left << setw(4) << "ID" << setw(15) << "NAMA" << setw(12) << "USERNAME" << setw(8) << "[PAKET]" << setw(10) << "HARI" << setw(12) << "JAM" << setw(8) << "BULAN" << setw(12) << "TOTAL\n";
-                cout << "--------------------------------------------------------------------------------\n";
-                for (int i = 0; i < jumlahmember; i++) {
-                    int total = hargapaket(temp[i].namapaket, temp[i].detail.bulanMember);
-                    cout << left << setw(4) << temp[i].id << setw(15) << temp[i].nama << setw(12) << temp[i].username
-                         << setw(8) << temp[i].namapaket << setw(10) << temp[i].detail.hari << setw(12) << temp[i].detail.jamsesi
-                         << setw(8) << temp[i].detail.bulanMember << setw(12) << ("Rp " + to_string(total) + "K") << endl;
-                }
-                cout << "================================================================================\n";
-
-            } else if (pilihan == 2) { 
-                cout << "\n--- JENIS SEARCH ---\n";
-                cout << "1. BERDASARKAN ID\n2. BERDASARKAN NAMA\npilihan: ";
-                int opsiSearch; cin >> opsiSearch; cin.ignore();
-                ASSERT(opsiSearch >= 1 && opsiSearch <= 2, "pilihan tidak valid");
-
-                member temp[MAX_MEMBER];
-                for(int i=0; i<jumlahmember; i++) temp[i] = members[i];
-
-                if (opsiSearch == 1) {
-                    sortIdAscending(temp, jumlahmember);
-                    int cariID; cout << "masukkan ID yang dicari: "; cin >> cariID; cin.ignore();
-                    ASSERT(cariID > 0, "ID harus > 0");
-                    int hasil = binarySearchID(temp, jumlahmember, cariID);
-                    if (hasil != -1) {
-                        MiloUtils::printSuccess("DATA DITEMUKAN!");
-                        cout << "  ID: " << temp[hasil].id << " | NAMA: " << temp[hasil].nama << " | PAKET: " << temp[hasil].namapaket << endl;
-                    } else {
-                        MiloUtils::printWarning("ID TIDAK DITEMUKAN.");
-                    }
-                } else {
-                    string cariNama; cout << "masukkan Nama yang dicari: "; getline(cin, cariNama);
-                    ASSERT(!cariNama.empty(), "nama tidak boleh kosong");
-                    int hasil = linearSearchNama(temp, jumlahmember, cariNama);
-                    if (hasil != -1) {
-                        MiloUtils::printSuccess("DATA DITEMUKAN!");
-                        cout << "  ID: " << temp[hasil].id << " | NAMA: " << temp[hasil].nama << " | PAKET: " << temp[hasil].namapaket << endl;
-                    } else {
-                        MiloUtils::printWarning("NAMA TIDAK DITEMUKAN.");
-                    }
-                }
-            } else {
-                kembali = true;
-            }
-            if (!kembali) MiloUtils::pause();
-        } catch (const PadelException& e) { MiloUtils::printError(e.what()); MiloUtils::pause(); }
-        catch (const exception& e) { MiloUtils::printError("ERROR " + string(e.what())); MiloUtils::pause(); }
-    } while (!kembali);
-}
-
 void menuAdmin(member members[], int &jumlahmember, string userLogin) {
+    MiloUtils::clearScreen();
     int pilihan; 
     bool menuberjalan = true;
     
@@ -553,42 +752,39 @@ void menuAdmin(member members[], int &jumlahmember, string userLogin) {
         try {
             cout << endl;
             MiloUtils::printHeader("ADMIN MENU - " + userLogin);
-            
-            cout << "1. TAMPILKAN SEMUA DATA       " << endl;
-            cout << "2. UPDATE PAKET MEMBER        " << endl;
-            cout << "3. HAPUS MEMBER               " << endl;
-            cout << "4. SORT & SEARCH              " << endl;
-            cout << "5. LOG AKTIVITAS        " << endl;
-            cout << "6. LOGOUT                     " << endl;
+            cout << "1. TAMPILKAN DATA" << endl;
+            cout << "2. KELOLA DISKON MEMBERSHIP" << endl;
+            cout << "3. UPDATE PAKET MEMBER" << endl;
+            cout << "4. HAPUS MEMBER" << endl;
+            cout << "5. LOG AKTIVITAS" << endl;
+            cout << "6. LOGOUT" << endl;
             MiloUtils::printSeparator();
-            cout << "pilih menu (1-6): ";
+            cout << "PILIHAN (1-6): ";
             cin >> pilihan;
             cin.ignore();
-            
-            ASSERT(pilihan >= 1 && pilihan <= 6, "PILIHAN TIDAK VALID! hanya 1-6");
+            ASSERT(pilihan >= 1 && pilihan <= 6, "PILIHAN TIDAK VALID!");
             
             switch (pilihan) {
-                case 1: bacasemuadata(members, jumlahmember); break;
-                case 2: updatedatamember(members, jumlahmember); break;
-                case 3: deletedatamember(members, jumlahmember); break;
-                case 4: menuSortingSearching(members, jumlahmember); break;
+                case 1: menuTampilData(members, jumlahmember); break;
+                case 2: kelolaDiskonMembership(members, jumlahmember); break;
+                case 3: updatedatamember(members, jumlahmember); break;
+                case 4: deletedatamember(members, jumlahmember); break;
                 case 5: tampilkanLog(); MiloUtils::pause(); break;
                 case 6:
-                    MiloUtils::printSuccess("BERHASIL LOGOUT! kembali ke menu utama.");
+                    MiloUtils::printSuccess("BERHASIL LOGOUT!");
                     menuberjalan = false;
                     break;
             }
-            
         } catch (const PadelException& e) {
             MiloUtils::printError(e.what());
         } catch (const exception& e) {
             MiloUtils::printError("TERJADI KESALAHAN: " + string(e.what()));
         }
-        
     } while (menuberjalan);
 }
 
 void menuMember(member members[], int &jumlahmember, string userLogin) {
+    MiloUtils::clearScreen();
     int pilihan; 
     bool menuberjalan = true;
     
@@ -596,72 +792,68 @@ void menuMember(member members[], int &jumlahmember, string userLogin) {
         try {
             cout << endl;
             MiloUtils::printHeader("MEMBER MENU - " + userLogin);
-            
-            cout << "1. LIHAT JADWAL & HARGA PAKET   " << endl;
-            cout << "2. BUAT AKUN MEMBERSHIP             " << endl;
-            cout << "3. LIHAT DATA SAYA             " << endl;
-            cout << "4. LOGOUT                       " << endl;
+            cout << "1. LIHAT JADWAL & HARGA PAKET" << endl;
+            cout << "2. BUAT AKUN MEMBERSHIP" << endl;
+            cout << "3. LIHAT DATA SAYA" << endl;
+            cout << "4. LOGOUT" << endl;
             MiloUtils::printSeparator();
-            cout << "pilih menu (1-4): ";
+            cout << "PILIHAN: ";
             cin >> pilihan;
             cin.ignore();
-            
-            ASSERT(pilihan >= 1 && pilihan <= 4, "PILIHAN TIDAK VALID! hanya 1-4");
+            ASSERT(pilihan >= 1 && pilihan <= 4, "PILIHAN TIDAK VALID!");
             
             switch (pilihan) {
                 case 1: tampilkaninfopaket(); break;
                 case 2: buatmember(members, jumlahmember, userLogin); break;
                 case 3: bacadatasaya(members, jumlahmember, userLogin); break;
                 case 4:
-                    MiloUtils::printSuccess("BERHASIL LOGOUT! kembali ke menu utama.");
+                    MiloUtils::printSuccess("BERHASIL LOGOUT!");
                     menuberjalan = false;
                     break;
             }
-            
         } catch (const PadelException& e) {
             MiloUtils::printError(e.what());
         } catch (const exception& e) {
             MiloUtils::printError("TERJADI KESALAHAN: " + string(e.what()));
         }
-        
     } while (menuberjalan);
 }
 
 int main() {
     try {
         user users[MAX_user] = {
-            {"risma", "102", "member"},
+            {"tirizmen", "2025", "member"},
             {"admin", "milopadel", "admin"}
         };
         int jumlahuser = 2;
-        
         member members[MAX_MEMBER];
         int jumlahmember = 0;
-        
         string inputnama, inputpw; 
         string userLogin, roleLogin;
+        
+        loadMembersFromCSV(members, jumlahmember);
+        if (jumlahmember > 0) {
+            cout << "[INFO] " << jumlahmember << " data member berhasil dimuat dari " << FILENAME << endl;
+        }
         
         while (true) {
             try {
                 MiloUtils::clearScreen();
                 MiloUtils::printHeader("WELCOME TO MILO PADEL");
-                
-                cout << "\n--- MENU UTAMA---" << endl;
+                cout << "\n--- MENU UTAMA ---" << endl;
                 cout << "1. REGISTRASI AKUN BARU" << endl;
                 cout << "2. LOGIN" << endl;
                 cout << "3. KELUAR PROGRAM" << endl;
-                cout << "pilihan: ";
+                cout << "PILIHAN: ";
                 int pilihanawal;
                 cin >> pilihanawal;
                 cin.ignore();
-                
                 ASSERT(pilihanawal >= 1 && pilihanawal <= 3, "PILIHAN TIDAK VALID");
                 
                 if (pilihanawal == 1) {
                     cout << "\n--- REGISTRASI AKUN ---" << endl;
-                    cout << "username: ";
+                    cout << "USERNAME: ";
                     getline(cin, inputnama);
-                    
                     bool usernameada = false;
                     for (int i = 0; i < jumlahuser; i++) {
                         if (inputnama == users[i].username) {
@@ -669,35 +861,24 @@ int main() {
                             break;
                         }
                     }
-                    
-                    ASSERT(!usernameada, "username \"" + inputnama + "\" SUDAH DIGUNAKAN");
-                    
-                    cout << "password: ";
+                    ASSERT(!usernameada, "username sudah digunakan!");
+                    cout << "PASSWORD: ";
                     getline(cin, inputpw);
-                    
-                    ASSERT(inputpw.length() >= 3, "password minimal 3 karakter");
-                    
+                    ASSERT(inputpw.length() >= 3, "password minimal 3 karakter!");
                     users[jumlahuser].username = inputnama;
                     users[jumlahuser].password = inputpw;
                     users[jumlahuser].role = "user";
                     jumlahuser++;
-                    
-                    MiloUtils::printSuccess("REGIS BERHASIL! YUK LOGIN");
-                    
+                    MiloUtils::printSuccess("REGISTRASI BERHASIL! SILAKAN LOGIN");
                 } else if (pilihanawal == 2) {
-                    cout << "\n--- LOGIN USER ---" << endl;
-                    
+                    cout << "\n--- LOGIN ---" << endl;
                     bool loginSukses = false;
-                    
                     for (int percobaan = 0; percobaan < 3; percobaan++) {
-                        cout << "username: ";
+                        cout << "Username: ";
                         getline(cin, inputnama);
-                        cout << "password: ";
+                        cout << "Password: ";
                         getline(cin, inputpw);
-                        
-                        bool usnbenar = false;
-                        bool pwbenar = false;
-                        
+                        bool usnbenar = false, pwbenar = false;
                         for (int i = 0; i < jumlahuser; i++) {
                             if (inputnama == users[i].username) {
                                 usnbenar = true;
@@ -709,50 +890,35 @@ int main() {
                                 }
                             }
                         }
-                        
                         if (usnbenar && pwbenar) {
                             loginSukses = true;
                             break;
                         }
-                        
-                        MiloUtils::printError("LOGIN GAGAL");
-                        if (!usnbenar) {
-                            cout << "    -> USERNAME GA ADA NIH!" << endl;
-                        } else {
-                            cout << "    -> PASSWORD SALAH!" << endl;
-                        }
-                        
+                        MiloUtils::printError("LOGIN GAGAL!");
+                        if (!usnbenar) cout << "  username tidak ditemukan!" << endl;
+                        else cout << "  password salah!" << endl;
                         ASSERT(percobaan < 2, "AKSES DITOLAK! GAGAL LOGIN 3x");
-                        
-                        cout << "    -> sisa percobaan: " << (2 - percobaan) << endl << endl;
+                        cout << "  Sisa percobaan: " << (2 - percobaan) << endl;
                     }
-                    
                     ASSERT(loginSukses, "LOGIN GAGAL");
-                    
-                    if (roleLogin == "admin") {
-                        menuAdmin(members, jumlahmember, userLogin);
-                    } else {
-                        menuMember(members, jumlahmember, userLogin);
-                    }
-                    
+                    if (roleLogin == "admin") menuAdmin(members, jumlahmember, userLogin);
+                    else menuMember(members, jumlahmember, userLogin);
                 } else if (pilihanawal == 3) {
-                    MiloUtils::printSuccess("THANK YOU! see you milovers.");
+                    saveMembersToCSV(members, jumlahmember);
+                    MiloUtils::printSuccess("TERIMA KASIH MILOVERS! SEE YOU...");
                     break;
                 }
-                
             } catch (const PadelException& e) {
                 MiloUtils::printError(e.what());
                 MiloUtils::pause();
             } catch (const exception& e) {
-                MiloUtils::printError("TERJADI KESALAHAN SISTEM " + string(e.what()));
+                MiloUtils::printError("TERJADI KESALAHAN: " + string(e.what()));
                 MiloUtils::pause();
             }
         }
-        
     } catch (const exception& e) {
         MiloUtils::printError("FATAL ERROR: " + string(e.what()));
         return 1;
     }
-    
     return 0;
 }
