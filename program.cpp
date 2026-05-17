@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include "table.h"
 using namespace std;
 
 #ifndef MILOUTILS_H
@@ -225,8 +226,29 @@ string jamsesi(string namapaket, int pilihan) {
 }
 
 void tampilkaninfopaket() {
-
+ clitable::Table tabel;
+    
+    tabel.addColumn(clitable::Column("PAKET", clitable::Column::CENTER_ALIGN, 
+                    clitable::Column::CENTER_ALIGN, 1, 8, clitable::Column::RESIZABLE));
+    tabel.addColumn(clitable::Column("JADWAL", clitable::Column::CENTER_ALIGN, 
+                    clitable::Column::LEFT_ALIGN, 1, 25, clitable::Column::RESIZABLE));
+    tabel.addColumn(clitable::Column("HARGA/SESI", clitable::Column::CENTER_ALIGN, 
+                    clitable::Column::RIGHT_ALIGN, 1, 15, clitable::Column::RESIZABLE));
+    
+    tabel.addTitle("PAKET SESI MILO PADEL");
+    
+    string row1[3] = {"SUN", "weekday, jam 06.00-16.00", "Rp 450.000"};
+    string row2[3] = {"MOON", "weekday, jam 16.00-23.00", "Rp 500.000"};
+    string row3[3] = {"STAR", "weekend, jam 16.00-23.00", "Rp 650.000"};
+    
+    tabel.addRow(row1);
+    tabel.addRow(row2);
+    tabel.addRow(row3);
+    
+    cout << tabel.draw();   
+    cout << "\n[INFO] 1 bulan = 4 pertemuan (1x seminggu)" << endl;
 }
+
 
 void sortnamadescending(member arr[], int n) {
     sort(arr, arr + n, [](const member& a, const member& b) {
@@ -603,8 +625,83 @@ void keloladiskonmembership(member members[], int jumlahmember) {
 }
 
 void bacadatasaya(member members[], int jumlahmember, string username) {
-   
+    try {
+        bool ditemukan = false;
+        
+        for (int i = 0; i < jumlahmember; i++) {
+            if (members[i].username == username) {
+                clitable::Table tabel;
+                
+                tabel.addColumn(clitable::Column("DATA MEMBER", clitable::Column::LEFT_ALIGN, 
+                                clitable::Column::LEFT_ALIGN, 1, 20, clitable::Column::RESIZABLE));
+                tabel.addColumn(clitable::Column("INFORMASI", clitable::Column::LEFT_ALIGN, 
+                                clitable::Column::LEFT_ALIGN, 1, 35, clitable::Column::RESIZABLE));
+                
+                tabel.addTitle("DATA MEMBER ANDA");
+                
+                int totalPertemuan = hitungpertemuan(members[i].detail.bulanMember);
+                int total = hargapaket(members[i].namapaket, members[i].detail.bulanMember);
+                int totalAkhir = members[i].diskon_aktif ? total - (total * members[i].nominal_diskon / 100) : total;
+                
+                string row1[2] = {"ID", to_string(members[i].id)};
+                string row2[2] = {"Nama", members[i].nama};
+                string row3[2] = {"Username", members[i].username};
+                string row4[2] = {"Paket", members[i].namapaket};
+                string row5[2] = {"Hari", members[i].detail.hari};
+                string row6[2] = {"Jam Sesi", members[i].detail.jamsesi};
+                string row7[2] = {"Durasi", to_string(members[i].detail.bulanMember) + " bulan"};
+                string row8[2] = {"Pertemuan/Bulan", to_string(PERTEMUAN_PER_BULAN) + "x"};
+                string row9[2] = {"Total Pertemuan", to_string(totalPertemuan) + "x"};
+                string row10[2] = {"Harga/Sesi", "Rp " + to_string(members[i].detail.harga) + ".000"};
+                
+                if (members[i].diskon_aktif) {
+                    string row11[2] = {"Diskon", to_string(members[i].nominal_diskon) + "%"};
+                    string row12[2] = {"Total Bayar (Setelah Diskon)", "Rp " + to_string(totalAkhir) + ".000"};
+                    tabel.addRow(row1);
+                    tabel.addRow(row2);
+                    tabel.addRow(row3);
+                    tabel.addRow(row4);
+                    tabel.addRow(row5);
+                    tabel.addRow(row6);
+                    tabel.addRow(row7);
+                    tabel.addRow(row8);
+                    tabel.addRow(row9);
+                    tabel.addRow(row10);
+                    tabel.addRow(row11);
+                    tabel.addRow(row12);
+                } else {
+                    string row11[2] = {"TOTAL BAYAR", "Rp " + to_string(total) + ".000"};
+                    tabel.addRow(row1);
+                    tabel.addRow(row2);
+                    tabel.addRow(row3);
+                    tabel.addRow(row4);
+                    tabel.addRow(row5);
+                    tabel.addRow(row6);
+                    tabel.addRow(row7);
+                    tabel.addRow(row8);
+                    tabel.addRow(row9);
+                    tabel.addRow(row10);
+                    tabel.addRow(row11);
+                }
+                
+                cout << tabel.draw();
+                ditemukan = true;
+                break;
+            }
+        }
+        
+        if (!ditemukan) {
+            cout << "\n[ERROR] BELUM JOIN MEMBER! Silakan buat akun membership dulu." << endl;
+        }
+        
+    } catch (const PADELEXCEPTION& e) {
+        MiloUtils::printError(e.what());
+    } catch (const exception& e) {
+        MiloUtils::printError("Terjadi kesalahan: " + string(e.what()));
+    }
 }
+
+
 
 void updatedatamember(member members[], int jumlahmember) {
     MiloUtils::clearScreen();
