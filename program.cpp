@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include "table.h"
 using namespace std;
 
 #ifndef MILOUTILS_H
@@ -169,7 +170,7 @@ string inputharivalid(string namapaket) {
 
 int hargapaket(string namapaket, int bulan) {
     try {
-        ASSERT(bulan >= 0, "Ddrasi tidak boleh negatif");
+        ASSERT(bulan >= 0, "durasi tidak boleh negatif");
         int hargaPerSesi;
         if (namapaket == "SUN") hargaPerSesi = 450;
         else if (namapaket == "MOON") hargaPerSesi = 500;
@@ -215,7 +216,7 @@ string jamsesi(string namapaket, int pilihan) {
             int start = 15 + pilihan;
             return to_string(start) + ".00-" + to_string(start + 1) + ".00";
         } else {
-            throw PADELEXCEPTION("Pilihan jam tidak valid!");
+            throw PADELEXCEPTION("pilihan jam tidak valid!");
         }
     } catch (const PADELEXCEPTION& e) {
         cout << "[!] " << e.what() << endl;
@@ -225,8 +226,29 @@ string jamsesi(string namapaket, int pilihan) {
 }
 
 void tampilkaninfopaket() {
-
+ clitable::Table tabel;
+    
+    tabel.addColumn(clitable::Column("PAKET", clitable::Column::CENTER_ALIGN, 
+                    clitable::Column::CENTER_ALIGN, 1, 8, clitable::Column::RESIZABLE));
+    tabel.addColumn(clitable::Column("JADWAL", clitable::Column::CENTER_ALIGN, 
+                    clitable::Column::LEFT_ALIGN, 1, 25, clitable::Column::RESIZABLE));
+    tabel.addColumn(clitable::Column("HARGA/SESI", clitable::Column::CENTER_ALIGN, 
+                    clitable::Column::RIGHT_ALIGN, 1, 15, clitable::Column::RESIZABLE));
+    
+    tabel.addTitle("PAKET SESI MILO PADEL");
+    
+    string row1[3] = {"SUN", "weekday, jam 06.00-16.00", "Rp 450.000"};
+    string row2[3] = {"MOON", "weekday, jam 16.00-23.00", "Rp 500.000"};
+    string row3[3] = {"STAR", "weekend, jam 16.00-23.00", "Rp 650.000"};
+    
+    tabel.addRow(row1);
+    tabel.addRow(row2);
+    tabel.addRow(row3);
+    
+    cout << tabel.draw();   
+    cout << "\n[INFO] 1 bulan = 4 pertemuan (1x seminggu)" << endl;
 }
+
 
 void sortnamadescending(member arr[], int n) {
     sort(arr, arr + n, [](const member& a, const member& b) {
@@ -344,7 +366,7 @@ void savememberstoCSV(member members[], int jumlahmember) {
     file.close();
 }
 
-void buatmember(member members[], int &jumlahmember, string username) {
+void createdatamember(member members[], int &jumlahmember, string username) {
     MiloUtils::clearScreen();
     try {
         for (int i = 0; i < jumlahmember; i++) {
@@ -369,22 +391,45 @@ void buatmember(member members[], int &jumlahmember, string username) {
         cout << "PAKET(SUN/MOON/STAR): ";
         getline(cin, baru.namapaket);
         
+        // [PERBAIKAN] KONVERSI INPUT PAKET KE UPPERCASE
+        for (char &c : baru.namapaket) {
+            c = toupper(c);
+        }
+        
         if (baru.namapaket != "SUN" && baru.namapaket != "MOON" && baru.namapaket != "STAR") {
             throw PADELEXCEPTION("PAKET TIDAK VALID!");
         }
         
         baru.detail.hari = inputharivalid(baru.namapaket);
         infopilihanjam(baru.namapaket);
-        cout << "JAM BERAPA (1-" << (baru.namapaket == "SUN" ? "10" : "7") << "): ";
-        int pilihanJam;
-        cin >> pilihanJam;
-        cin.ignore();
-        baru.detail.jamsesi = jamsesi(baru.namapaket, pilihanJam);
         
-        cout << "\nMAU JOIN BERAPA BULAN: ";
-        cin >> baru.detail.bulanMember;
-        cin.ignore();
-        ASSERT(baru.detail.bulanMember > 0, "durasi harus lebih dari 0 bulan");
+        int pilihanJam;
+        while (true) {
+            cout << "JAM BERAPA (1-" << (baru.namapaket == "SUN" ? "10" : "7") << "): ";
+            cin >> pilihanJam;
+            cin.ignore();
+            
+            try {
+                baru.detail.jamsesi = jamsesi(baru.namapaket, pilihanJam);
+                if (baru.detail.jamsesi != "-") {
+                    break;
+                }
+            } catch (const PADELEXCEPTION& e) {
+                cout << "[!] " << e.what() << endl;
+            }
+        }
+
+        while (true) {
+            cout << "\nMAU JOIN BERAPA BULAN (1-12): ";
+            cin >> baru.detail.bulanMember;
+            cin.ignore();
+            
+            if (baru.detail.bulanMember >= 1 && baru.detail.bulanMember <= 12) {
+                break;
+            } else {
+                cout << "[!] Durasi harus antara 1-12 bulan! Silakan input kembali." << endl;
+            }
+        }
         
         baru.detail.harga = hargapaket(baru.namapaket);
         members[jumlahmember] = baru;
@@ -602,9 +647,84 @@ void keloladiskonmembership(member members[], int jumlahmember) {
     }
 }
 
-void bacadatasaya(member members[], int jumlahmember, string username) {
-   
+void readdatamember(member members[], int jumlahmember, string username) {
+    try {
+        bool ditemukan = false;
+        
+        for (int i = 0; i < jumlahmember; i++) {
+            if (members[i].username == username) {
+                clitable::Table tabel;
+                
+                tabel.addColumn(clitable::Column("DATA MEMBER", clitable::Column::LEFT_ALIGN, 
+                                clitable::Column::LEFT_ALIGN, 1, 20, clitable::Column::RESIZABLE));
+                tabel.addColumn(clitable::Column("INFORMASI", clitable::Column::LEFT_ALIGN, 
+                                clitable::Column::LEFT_ALIGN, 1, 35, clitable::Column::RESIZABLE));
+                
+                tabel.addTitle("DATA MEMBER ANDA");
+                
+                int totalPertemuan = hitungpertemuan(members[i].detail.bulanMember);
+                int total = hargapaket(members[i].namapaket, members[i].detail.bulanMember);
+                int totalAkhir = members[i].diskon_aktif ? total - (total * members[i].nominal_diskon / 100) : total;
+                
+                string row1[2] = {"ID", to_string(members[i].id)};
+                string row2[2] = {"NAMA", members[i].nama};
+                string row3[2] = {"USERNAME", members[i].username};
+                string row4[2] = {"PAKET", members[i].namapaket};
+                string row5[2] = {"HARI", members[i].detail.hari};
+                string row6[2] = {"JAM SESI", members[i].detail.jamsesi};
+                string row7[2] = {"DURASI", to_string(members[i].detail.bulanMember) + " bulan"};
+                string row8[2] = {"PERTEMUAN /bulan", to_string(PERTEMUAN_PER_BULAN) + "x"};
+                string row9[2] = {"TOTAL PERTEMUAN", to_string(totalPertemuan) + "x"};
+                string row10[2] = {"HARGA /sesi", "Rp " + to_string(members[i].detail.harga) + ".000"};
+                
+                if (members[i].diskon_aktif) {
+                    string row11[2] = {"DISKON", to_string(members[i].nominal_diskon) + "%"};
+                    string row12[2] = {"TOTAL BAYAR", "Rp " + to_string(totalAkhir) + ".000"};
+                    tabel.addRow(row1);
+                    tabel.addRow(row2);
+                    tabel.addRow(row3);
+                    tabel.addRow(row4);
+                    tabel.addRow(row5);
+                    tabel.addRow(row6);
+                    tabel.addRow(row7);
+                    tabel.addRow(row8);
+                    tabel.addRow(row9);
+                    tabel.addRow(row10);
+                    tabel.addRow(row11);
+                    tabel.addRow(row12);
+                } else {
+                    string row11[2] = {"TOTAL BAYAR", "Rp " + to_string(total) + ".000"};
+                    tabel.addRow(row1);
+                    tabel.addRow(row2);
+                    tabel.addRow(row3);
+                    tabel.addRow(row4);
+                    tabel.addRow(row5);
+                    tabel.addRow(row6);
+                    tabel.addRow(row7);
+                    tabel.addRow(row8);
+                    tabel.addRow(row9);
+                    tabel.addRow(row10);
+                    tabel.addRow(row11);
+                }
+                
+                cout << tabel.draw();
+                ditemukan = true;
+                break;
+            }
+        }
+        
+        if (!ditemukan) {
+            cout << "\n[ERROR] BELUM JOIN MEMBER! silakan buat akun membership dulu.." << endl;
+        }
+        
+    } catch (const PADELEXCEPTION& e) {
+        MiloUtils::printError(e.what());
+    } catch (const exception& e) {
+        MiloUtils::printError("TERJADI KESALAHAN: " + string(e.what()));
+    }
 }
+
+
 
 void updatedatamember(member members[], int jumlahmember) {
     MiloUtils::clearScreen();
@@ -636,7 +756,7 @@ void updatedatamember(member members[], int jumlahmember) {
         
         members[idx].detail.hari = inputharivalid(members[idx].namapaket);
         infopilihanjam(members[idx].namapaket);
-        cout << "Pilih jam sesi (1-" << (members[idx].namapaket == "SUN" ? "10" : "7") << "): ";
+        cout << "pilih jam sesi (1-" << (members[idx].namapaket == "SUN" ? "10" : "7") << "): ";
         int pilihanJam;
         cin >> pilihanJam;
         cin.ignore();
@@ -662,7 +782,7 @@ void updatedatamember(member members[], int jumlahmember) {
         } else {
             cout << "   TOTAL BAYAR     : Rp " << total << ".000" << endl;
         }
-        catatLog("Update member ID " + to_string(members[idx].id));
+        catatLog("update member ID " + to_string(members[idx].id));
     } catch (const PADELEXCEPTION& e) {
         MiloUtils::printError(e.what());
     } catch (const exception& e) {
@@ -762,8 +882,8 @@ void menumember(member members[], int &jumlahmember, string userLogin) {
             
             switch (pilihan) {
                 case 1: tampilkaninfopaket(); break;
-                case 2: buatmember(members, jumlahmember, userLogin); break;
-                case 3: bacadatasaya(members, jumlahmember, userLogin); break;
+                case 2: createdatamember(members, jumlahmember, userLogin); break;
+                case 3: readdatamember(members, jumlahmember, userLogin); break;
                 case 4:
                     MiloUtils::printSuccess("BERHASIL LOGOUT!");
                     menuberjalan = false;
@@ -780,7 +900,7 @@ void menumember(member members[], int &jumlahmember, string userLogin) {
 int main() {
     try {
         user users[MAX_user] = {
-            {"tirizmen", "2025", "member"},
+            {"tirizzzmen", "2025", "member"},
             {"admin", "milopadel", "admin"}
         };
         int jumlahuser = 2;
@@ -832,9 +952,9 @@ int main() {
                     cout << "\n--- LOGIN ---" << endl;
                     bool loginSukses = false;
                     for (int percobaan = 0; percobaan < 3; percobaan++) {
-                        cout << "Username: ";
+                        cout << "USERNAME: ";
                         getline(cin, inputnama);
-                        cout << "Password: ";
+                        cout << "PASSWORD: ";
                         getline(cin, inputpw);
                         bool usnbenar = false, pwbenar = false;
                         for (int i = 0; i < jumlahuser; i++) {
@@ -856,7 +976,7 @@ int main() {
                         if (!usnbenar) cout << "  username tidak ditemukan!" << endl;
                         else cout << "  password salah!" << endl;
                         ASSERT(percobaan < 2, "AKSES DITOLAK! GAGAL LOGIN 3x");
-                        cout << "  Sisa percobaan: " << (2 - percobaan) << endl;
+                        cout << "  sisa percobaan: " << (2 - percobaan) << endl;
                     }
                     ASSERT(loginSukses, "LOGIN GAGAL");
                     if (roleLogin == "admin") menuadmin(members, jumlahmember, userLogin);
