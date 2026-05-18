@@ -197,8 +197,73 @@ int hitungdiskon(int bulan) {
 }
 
 void infopilihanjam(string namapaket) {
+  clitable::Table tabel;
+      tabel.addTitle("PILIH JAM SESI");
 
+      tabel.addColumn(clitable::Column("No", clitable::Column::CENTER_ALIGN,
+                      clitable::Column::CENTER_ALIGN, 1, 5, clitable::Column::RESIZABLE));
+      tabel.addColumn(clitable::Column("JAM SESI",clitable::Column::CENTER_ALIGN,
+                      clitable::Column::CENTER_ALIGN, 1, 20,clitable::Column::RESIZABLE));
+            int totalSesi = 0;
+        if (namapaket == "SUN") {
+               totalSesi = 10;
+                    for (int i = 1; i <= totalSesi; i++) {
+                string row[] = {
+                to_string(i),
+                to_string(5+i) + ".00 - " +
+                to_string(6+i) + ".00"
+            };
+               tabel.addRow(row);
+        }
+
+    } else if (namapaket == "MOON" || namapaket == "STAR") {
+
+        totalSesi = 7;
+
+        for (int i = 1; i <= totalSesi; i++) {
+
+            string row[] = {
+                to_string(i),
+                to_string(15+i) + ".00 - " +
+                to_string(16+i) + ".00"
+            };
+
+            tabel.addRow(row);
+        }
+    }
+
+    cout << tabel.draw();
+
+    int pilihan;
+
+    do {
+
+        cout << "\nPilih nomor sesi : ";
+        cin >> pilihan;
+
+        if (cin.fail()) {
+
+            cin.clear();
+
+            cin.ignore(
+                numeric_limits<streamsize>::max(),
+                '\n'
+            );
+
+            cout << "Input harus berupa angka!\n";
+            continue;
+        }
+
+        if (pilihan < 1 || pilihan > totalSesi) {
+            cout << "Nomor sesi tidak tersedia!\n";
+        }
+
+    } while (pilihan < 1 || pilihan > totalSesi);
+
+    cout << "\nSesi berhasil dipilih.\n";
 }
+
+
 
 string jamsesi(string namapaket, int pilihan) {
     try {
