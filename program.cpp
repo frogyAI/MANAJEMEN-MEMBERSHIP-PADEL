@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <map>
+#include <cctype>
 #include "table.h"
 using namespace std;
 
@@ -18,36 +20,38 @@ namespace MiloUtils {
     }
     
     void printHeader(const string& title) {
-        cout << "\n+=======================================+" << endl;
-        cout << "| " << left << setw(37) << title << " |" << endl;
-        cout << "+=======================================+" << endl;
+        int width = 39;
+        string border = "+=======================================+";
+        cout << "\n\033[1;36m" << border << "\033[0m" << endl;
+        cout << "\033[1;33m| " << left << setw(width) << title << " |\033[0m" << endl;
+        cout << "\033[1;36m" << border << "\033[0m" << endl;
     }
     
     void printSeparator() {
-        cout << "=======================================" << endl;
+        cout << "\033[1;36m=========================================\033[0m" << endl;
     }
     
     void printSuccess(const string& message) {
-        cout << "\n[OK] " << message << endl;
+        cout << "\n\033[1;32m[OK] " << message << "\033[0m" << endl;
     }
     
     void printError(const string& message) {
-        cout << "\n[ERROR] " << message << endl;
+        cout << "\n\033[1;31m[ERROR] " << message << "\033[0m" << endl;
     }
     
     void printWarning(const string& message) {
-        cout << "\n[WARNING] " << message << endl;
+        cout << "\n\033[1;33m[WARNING] " << message << "\033[0m" << endl;
     }
     
     void pause() {
-        cout << "\npress enter to continue...";
+        cout << "\n\033[1;36mpress enter to continue...\033[0m";
         cin.ignore();
     }
     
     int getValidatedInput(int minVal, int maxVal, const string& prompt) {
         int input;
         while (true) {
-            cout << prompt;
+            cout << "\033[1;37m" << prompt << "\033[0m";
             if (cin >> input) {
                 if (input >= minVal && input <= maxVal) {
                     return input;
@@ -99,6 +103,7 @@ struct member {
 #define MAX_MEMBER 100
 #define MAX_user 20
 #define PERTEMUAN_PER_BULAN 4
+#define MAX_PER_SESI 10
 
 class PADELEXCEPTION : public exception {
 private:
@@ -109,6 +114,58 @@ public:
         return message.c_str();
     }
 };
+
+string getSesiKey(string namapaket, string hari, string jamsesi) {
+    return namapaket + "|" + hari + "|" + jamsesi;
+}
+
+bool cekKuotaTersedia(string namapaket, string hari, string jamsesi, member members[], int jumlahmember, int excludeId = -1) {
+    string key = getSesiKey(namapaket, hari, jamsesi);
+    int currentCount = 0;
+    for (int i = 0; i < jumlahmember; i++) {
+        if (members[i].id == excludeId) continue;
+        string memberKey = getSesiKey(members[i].namapaket, members[i].detail.hari, members[i].detail.jamsesi);
+        if (memberKey == key) {
+            currentCount++;
+        }
+    }
+    return currentCount < MAX_PER_SESI;
+}
+
+void tampilkanSesiTersedia(string namapaket, string hari, member members[], int jumlahmember) {
+    cout << "\n\033[1;35m=== SESI TERSEDIA UNTUK HARI " << hari << " ===\033[0m" << endl;
+    int maxJam = (namapaket == "SUN") ? 6 : 7;
+    vector<pair<int, string>> sesiTersedia;
+    
+    for (int i = 1; i <= maxJam; i++) {
+        string jamsesi;
+        if (namapaket == "SUN") {
+            int jamMulai = 5 + i;
+            jamsesi = to_string(jamMulai) + ".00-" + to_string(jamMulai + 1) + ".00";
+        } else {
+            int jamMulai = 15 + i;
+            jamsesi = to_string(jamMulai) + ".00-" + to_string(jamMulai + 1) + ".00";
+        }
+        
+        if (cekKuotaTersedia(namapaket, hari, jamsesi, members, jumlahmember)) {
+            sesiTersedia.push_back({i, jamsesi});
+        }
+    }
+    
+    if (sesiTersedia.empty()) {
+        cout << "\033[1;33m[WARNING] Tidak ada sesi tersedia untuk hari " << hari << "\033[0m" << endl;
+    } else {
+        for (auto& sesi : sesiTersedia) {
+            int currentCount = 0;
+            string key = getSesiKey(namapaket, hari, sesi.second);
+            for (int j = 0; j < jumlahmember; j++) {
+                string memberKey = getSesiKey(members[j].namapaket, members[j].detail.hari, members[j].detail.jamsesi);
+                if (memberKey == key) currentCount++;
+            }
+            cout << "   \033[1;32m" << sesi.first << ". " << sesi.second << "\033[0m (\033[1;33mkuota: " << currentCount << "/" << MAX_PER_SESI << "\033[0m)" << endl;
+        }
+    }
+}
 
 int hitungpertemuan(int bulan) {
     try {
@@ -286,12 +343,19 @@ void tampilkaninfopaket() {
     tabel.addRow(row3);
     
     cout << tabel.draw();   
-    cout << "\n[INFO] 1 bulan = 4 pertemuan (1x seminggu)" << endl;
+    cout << "\n\033[1;36m[INFO] 1 bulan = 4 pertemuan (1x seminggu)\033[0m" << endl;
+    cout << "\033[1;36m[INFO] Maksimal 10 member per sesi (5 lapangan x 2 orang)\033[0m" << endl;
 }
 
 void sortnamadescending(member arr[], int n) {
     sort(arr, arr + n, [](const member& a, const member& b) {
-        return a.nama > b.nama;
+        string namaA = a.nama;
+        string namaB = b.nama;
+        
+        for (char &c : namaA) c = tolower(c);
+        for (char &c : namaB) c = tolower(c);
+        
+        return namaA > namaB;
     });
 }
 
@@ -338,14 +402,14 @@ void catatLog(const string& aktivitas) {
 
 void tampilkanLog() {
     if (logAktivitas.empty()) {
-        cout << "\n[INFO] belum ada aktivitas tercatat." << endl;
+        cout << "\n\033[1;36m[INFO] belum ada aktivitas tercatat.\033[0m" << endl;
         return;
     }
-    cout << "\n=== LOG AKTIVITAS ===" << endl;
+    cout << "\n\033[1;35m=== LOG AKTIVITAS ===\033[0m" << endl;
     for (size_t i = 0; i < logAktivitas.size(); i++) {
-        cout << "[" << (i+1) << "] " << logAktivitas[i] << endl;
+        cout << "\033[1;32m[" << (i+1) << "]\033[0m \033[1;37m" << logAktivitas[i] << "\033[0m" << endl;
     }
-    cout << "=====================" << endl;
+    cout << "\033[1;35m=====================\033[0m" << endl;
 }
 
 const string FILENAME = "data_member.csv";
@@ -414,14 +478,14 @@ void createdatamember(member members[], int &jumlahmember, string username) {
         }
         ASSERT(jumlahmember < MAX_MEMBER, "kapasitas member penuh");
         
-        cout << "\n--- BUAT AKUN MEMBER ---" << endl;
+        cout << "\n\033[1;33m--- BUAT AKUN MEMBER ---\033[0m" << endl;
         member baru;
         baru.id = (jumlahmember > 0) ? members[jumlahmember-1].id + 1 : 1;
         baru.username = username;
         baru.diskon_aktif = false;
         baru.nominal_diskon = 0;
         
-        cout << "NAMA: ";
+        cout << "\033[1;37mNAMA: \033[0m";
         getline(cin, baru.nama);
         ASSERT(!baru.nama.empty(), "nama tidak boleh kosong");
         
@@ -429,7 +493,7 @@ void createdatamember(member members[], int &jumlahmember, string username) {
         
         int pilihanPaket;
         while (true) {
-            cout << "\nPILIH PAKET (1-3): ";
+            cout << "\n\033[1;37mPILIH PAKET (1-3): \033[0m";
             cin >> pilihanPaket;
             cin.ignore();
             
@@ -443,13 +507,13 @@ void createdatamember(member members[], int &jumlahmember, string username) {
                 baru.namapaket = "STAR";
                 break;
             } else {
-                cout << "[!] Pilihan tidak valid! Masukkan angka 1-3." << endl;
+                cout << "\033[1;33m[!] Pilihan tidak valid! Masukkan angka 1-3.\033[0m" << endl;
             }
         }
         
         string infoHari = (baru.namapaket == "STAR") ? "Sabtu/Minggu" : "Senin-Jumat";
         while (true) {
-            cout << "\nHARI (" << infoHari << "): ";
+            cout << "\n\033[1;37mHARI (" << infoHari << "): \033[0m";
             getline(cin, baru.detail.hari);
             
             if (validasihari(baru.detail.hari, baru.namapaket)) {
@@ -461,44 +525,53 @@ void createdatamember(member members[], int &jumlahmember, string username) {
                 }
                 break;
             } else {
-                cout << "[!] Hari tidak valid untuk paket " << baru.namapaket << "!" << endl;
+                cout << "\033[1;33m[!] Hari tidak valid untuk paket " << baru.namapaket << "!\033[0m" << endl;
                 cout << "    Paket " << baru.namapaket << " hanya bisa: " << infoHari << endl;
             }
         }
         
-        cout << "\n";
-        jamberdasarkanpaket(baru.namapaket);
+        tampilkanSesiTersedia(baru.namapaket, baru.detail.hari, members, jumlahmember);
         
         int maxJam = (baru.namapaket == "SUN") ? 6 : 7;
         int pilihanJam;
-        while (true) {
-            cout << "\nPILIH JAM SESI (1-" << maxJam << "): ";
+        bool sesiValid = false;
+        
+        while (!sesiValid) {
+            cout << "\n\033[1;37mPILIH JAM SESI (1-" << maxJam << "): \033[0m";
             cin >> pilihanJam;
             cin.ignore();
             
             if (pilihanJam >= 1 && pilihanJam <= maxJam) {
+                string jamsesi;
                 if (baru.namapaket == "SUN") {
                     int jamMulai = 5 + pilihanJam;
-                    baru.detail.jamsesi = to_string(jamMulai) + ".00-" + to_string(jamMulai + 1) + ".00";
+                    jamsesi = to_string(jamMulai) + ".00-" + to_string(jamMulai + 1) + ".00";
                 } else {
                     int jamMulai = 15 + pilihanJam;
-                    baru.detail.jamsesi = to_string(jamMulai) + ".00-" + to_string(jamMulai + 1) + ".00";
+                    jamsesi = to_string(jamMulai) + ".00-" + to_string(jamMulai + 1) + ".00";
                 }
-                break;
+                
+                if (cekKuotaTersedia(baru.namapaket, baru.detail.hari, jamsesi, members, jumlahmember)) {
+                    baru.detail.jamsesi = jamsesi;
+                    sesiValid = true;
+                } else {
+                    cout << "\033[1;33m[!] Sesi sudah penuh! (maksimal " << MAX_PER_SESI << " member)\033[0m" << endl;
+                    tampilkanSesiTersedia(baru.namapaket, baru.detail.hari, members, jumlahmember);
+                }
             } else {
-                cout << "[!] Pilihan jam tidak valid! Masukkan angka 1-" << maxJam << "." << endl;
+                cout << "\033[1;33m[!] Pilihan jam tidak valid! Masukkan angka 1-" << maxJam << ".\033[0m" << endl;
             }
         }
         
         while (true) {
-            cout << "\nMAU JOIN BERAPA BULAN (1-12): ";
+            cout << "\n\033[1;37mMAU JOIN BERAPA BULAN (1-12): \033[0m";
             cin >> baru.detail.bulanMember;
             cin.ignore();
             
             if (baru.detail.bulanMember >= 1 && baru.detail.bulanMember <= 12) {
                 break;
             } else {
-                cout << "[!] Durasi harus antara 1-12 bulan! Silakan input kembali." << endl;
+                cout << "\033[1;33m[!] Durasi harus antara 1-12 bulan! Silakan input kembali.\033[0m" << endl;
             }
         }
         
@@ -512,14 +585,14 @@ void createdatamember(member members[], int &jumlahmember, string username) {
         int total = hargapaket(baru.namapaket, baru.detail.bulanMember);
         
         MiloUtils::printSuccess("YEY AKUN MEMBER UDAH ADA!");
-        cout << "      PAKET           : " << baru.namapaket << endl;
-        cout << "      HARI            : " << baru.detail.hari << endl;
-        cout << "      JAM SESI        : " << baru.detail.jamsesi << endl;
-        cout << "      DURASI          : " << baru.detail.bulanMember << " bulan" << endl;
-        cout << "      TOTAL PERTEMUAN : " << totalPertemuan << "x" << endl;
-        cout << "      HARGA /SESI     : Rp " << baru.detail.harga << ".000" << endl;
-        cout << "      TOTAL BAYAR     : Rp " << total << ".000" << endl;
-        catatLog("member baru: " + baru.nama + " (ID: " + to_string(baru.id) + ")");
+        cout << "\033[1;36m      PAKET           : \033[1;37m" << baru.namapaket << "\033[0m" << endl;
+        cout << "\033[1;36m      HARI            : \033[1;37m" << baru.detail.hari << "\033[0m" << endl;
+        cout << "\033[1;36m      JAM SESI        : \033[1;37m" << baru.detail.jamsesi << "\033[0m" << endl;
+        cout << "\033[1;36m      DURASI          : \033[1;37m" << baru.detail.bulanMember << " bulan\033[0m" << endl;
+        cout << "\033[1;36m      TOTAL PERTEMUAN : \033[1;37m" << totalPertemuan << "x\033[0m" << endl;
+        cout << "\033[1;36m      HARGA /SESI     : \033[1;32mRp " << baru.detail.harga << ".000\033[0m" << endl;
+        cout << "\033[1;36m      TOTAL BAYAR     : \033[1;32mRp " << total << ".000\033[0m" << endl;
+        catatLog("member baru: " + baru.nama + " (ID: " + to_string(baru.id) + ") - Sesi: " + baru.detail.hari + " " + baru.detail.jamsesi);
     } catch (const PADELEXCEPTION& e) {
         MiloUtils::printError(e.what());
     } catch (const exception& e) {
@@ -540,11 +613,11 @@ void menutampildata(member members[], int jumlahmember) {
     while (!exitMenu) {
         try {
             MiloUtils::printHeader("MENU TAMPILAN DATA");
-            cout << "1. SEARCH" << endl;
-            cout << "2. SORT" << endl;
-            cout << "3. KEMBALI" << endl;
+            cout << "\n\033[1;32m1. SEARCH\033[0m" << endl;
+            cout << "\033[1;34m2. SORT\033[0m" << endl;
+            cout << "\033[1;31m3. KEMBALI\033[0m" << endl;
             MiloUtils::printSeparator();
-            cout << "PILIHAN: ";
+            cout << "\033[1;37mPILIHAN: \033[0m";
             cin >> pilihanUtama;
             cin.ignore();
             ASSERT(pilihanUtama >= 1 && pilihanUtama <= 3, "PILIHAN TIDAK VALID");
@@ -553,41 +626,43 @@ void menutampildata(member members[], int jumlahmember) {
                 int pilihanSearch;
                 bool exitSearch = false;
                 while (!exitSearch) {
-                    cout << "\n--- MENU SEARCH ---" << endl;
+                    cout << "\n\033[1;35m--- MENU SEARCH ---\033[0m" << endl;
                     cout << "1. BERDASARKAN ID" << endl;
                     cout << "2. BERDASARKAN NAMA" << endl;
                     cout << "3. KEMBALI" << endl;
-                    cout << "PILIHAN: ";
+                    cout << "\033[1;37mPILIHAN: \033[0m";
                     cin >> pilihanSearch;
                     cin.ignore();
                     ASSERT(pilihanSearch >= 1 && pilihanSearch <= 3, "PILIHAN TIDAK VALID");
 
                     if (pilihanSearch == 1) {
-                        int cariID; cout << "masukkan ID: "; cin >> cariID; cin.ignore();
+                        int cariID; cout << "\033[1;37mmasukkan ID: \033[0m"; cin >> cariID; cin.ignore();
                         int idx = -1;
                         for(int i=0; i<jumlahmember; i++) if(members[i].id == cariID) { idx = i; break; }
                         if (idx != -1) {
                             int total = hargapaket(members[idx].namapaket, members[idx].detail.bulanMember);
                             int totalAkhir = members[idx].diskon_aktif ? total - (total * members[idx].nominal_diskon / 100) : total;
                             MiloUtils::printSuccess("DATA DITEMUKAN!");
-                            cout << "  ID: " << members[idx].id << " | NAMA: " << members[idx].nama 
-                                 << " | PAKET: " << members[idx].namapaket 
-                                 << " | DISKON: " << (members[idx].diskon_aktif ? to_string(members[idx].nominal_diskon) + "%" : "-")
-                                 << " | TOTAL: Rp " << totalAkhir << "K" << endl;
+                            cout << "\033[1;36m  ID: \033[1;37m" << members[idx].id << "\033[1;36m | NAMA: \033[1;37m" << members[idx].nama 
+                                 << "\033[1;36m | PAKET: \033[1;37m" << members[idx].namapaket 
+                                 << "\033[1;36m | SESI: \033[1;37m" << members[idx].detail.hari << " " << members[idx].detail.jamsesi
+                                 << "\033[1;36m | DISKON: \033[1;37m" << (members[idx].diskon_aktif ? to_string(members[idx].nominal_diskon) + "%" : "-")
+                                 << "\033[1;36m | TOTAL: \033[1;32mRp " << totalAkhir << "K\033[0m" << endl;
                         } else {
                             MiloUtils::printWarning("ID TIDAK DITEMUKAN.");
                         }
                     } else if (pilihanSearch == 2) {
-                        string cariNama; cout << "masukkan Nama: "; getline(cin, cariNama);
+                        string cariNama; cout << "\033[1;37mmasukkan Nama: \033[0m"; getline(cin, cariNama);
                         int idx = linearsearchname(members, jumlahmember, cariNama);
                         if (idx != -1) {
                             int total = hargapaket(members[idx].namapaket, members[idx].detail.bulanMember);
                             int totalAkhir = members[idx].diskon_aktif ? total - (total * members[idx].nominal_diskon / 100) : total;
                             MiloUtils::printSuccess("DATA DITEMUKAN!");
-                            cout << "  ID: " << members[idx].id << " | NAMA: " << members[idx].nama 
-                                 << " | PAKET: " << members[idx].namapaket 
-                                 << " | DISKON: " << (members[idx].diskon_aktif ? to_string(members[idx].nominal_diskon) + "%" : "-")
-                                 << " | TOTAL: Rp " << totalAkhir << "K" << endl;
+                            cout << "\033[1;36m  ID: \033[1;37m" << members[idx].id << "\033[1;36m | NAMA: \033[1;37m" << members[idx].nama 
+                                 << "\033[1;36m | PAKET: \033[1;37m" << members[idx].namapaket 
+                                 << "\033[1;36m | SESI: \033[1;37m" << members[idx].detail.hari << " " << members[idx].detail.jamsesi
+                                 << "\033[1;36m | DISKON: \033[1;37m" << (members[idx].diskon_aktif ? to_string(members[idx].nominal_diskon) + "%" : "-")
+                                 << "\033[1;36m | TOTAL: \033[1;32mRp " << totalAkhir << "K\033[0m" << endl;
                         } else {
                             MiloUtils::printWarning("NAMA TIDAK DITEMUKAN.");
                         }
@@ -600,12 +675,12 @@ void menutampildata(member members[], int jumlahmember) {
                 int pilihanSort;
                 bool exitSort = false;
                 while (!exitSort) {
-                    cout << "\n--- MENU SORT ---" << endl;
+                    cout << "\n\033[1;35m--- MENU SORT ---\033[0m" << endl;
                     cout << "1. NAMA" << endl;
                     cout << "2. ID" << endl;
                     cout << "3. HARGA" << endl;
                     cout << "4. KEMBALI" << endl;
-                    cout << "PILIHAN: ";
+                    cout << "\033[1;37mPILIHAN: \033[0m";
                     cin >> pilihanSort;
                     cin.ignore();
                     ASSERT(pilihanSort >= 1 && pilihanSort <= 4, "PILIHAN TIDAK VALID");
@@ -618,19 +693,21 @@ void menutampildata(member members[], int jumlahmember) {
                         else if(pilihanSort == 2) sorthargadescending(temp, jumlahmember);
                         else if(pilihanSort == 3) sorthargaascending(temp, jumlahmember);
 
-                        cout << "\n================================================================================" << endl;
-                        cout << left << setw(4) << "ID" << setw(15) << "NAMA" << setw(8) << "PAKET" 
-                             << setw(8) << "BULAN" << setw(10) << "DISKON" << setw(15) << "TOTAL" << endl;
-                        cout << "--------------------------------------------------------------------------------" << endl;
+                        cout << "\n\033[1;36m========================================================================================\033[0m" << endl;
+                        cout << "\033[1;33m" << left << setw(4) << "ID" << setw(15) << "NAMA" << setw(8) << "PAKET" 
+                             << setw(12) << "SESI" << setw(8) << "BULAN" << setw(10) << "DISKON" << setw(15) << "TOTAL" << "\033[0m" << endl;
+                        cout << "\033[1;36m----------------------------------------------------------------------------------------\033[0m" << endl;
                         for (int i = 0; i < jumlahmember; i++) {
                             int total = hargapaket(temp[i].namapaket, temp[i].detail.bulanMember);
                             int totalAkhir = temp[i].diskon_aktif ? total - (total * temp[i].nominal_diskon / 100) : total;
-                            cout << left << setw(4) << temp[i].id << setw(15) << temp[i].nama 
-                                 << setw(8) << temp[i].namapaket << setw(8) << temp[i].detail.bulanMember
+                            string sesiInfo = temp[i].detail.hari.substr(0,3) + " " + temp[i].detail.jamsesi.substr(0,5);
+                            cout << "\033[1;37m" << left << setw(4) << temp[i].id << setw(15) << temp[i].nama 
+                                 << setw(8) << temp[i].namapaket << setw(12) << sesiInfo
+                                 << setw(8) << temp[i].detail.bulanMember
                                  << setw(10) << (temp[i].diskon_aktif ? to_string(temp[i].nominal_diskon) + "%" : "-")
-                                 << setw(15) << ("Rp " + to_string(totalAkhir) + "K") << endl;
+                                 << setw(15) << ("Rp " + to_string(totalAkhir) + "K") << "\033[0m" << endl;
                         }
-                        cout << "================================================================================" << endl;
+                        cout << "\033[1;36m========================================================================================\033[0m" << endl;
                     } else if (pilihanSort == 4) {
                         exitSort = true;
                     }
@@ -657,23 +734,23 @@ void keloladiskonmembership(member members[], int jumlahmember) {
             return;
         }
         
-        cout << "\n=== DISKON MEMBERSHIP ===" << endl;
-        cout << "[INFO] KETENTUAN DISKON:" << endl;
-        cout << "1. 6-8 bulan --> diskon 15%" << endl;
-        cout << "2. 9-12 bulan --> diskon 30%" << endl;
-        cout << "\nDAFTAR MEMBER   :" << endl;
-        cout << left << setw(4) << "ID" << setw(15) << "NAMA" << setw(8) << "BULAN" 
-             << setw(15) << "TOTAL AWAL" << endl;
-        cout << "------------------------------------------" << endl;
+        cout << "\n\033[1;35m=== DISKON MEMBERSHIP ===\033[0m" << endl;
+        cout << "\033[1;36m[INFO] KETENTUAN DISKON:\033[0m" << endl;
+        cout << "\033[1;33m1. 6-8 bulan --> diskon 15%\033[0m" << endl;
+        cout << "\033[1;33m2. 9-12 bulan --> diskon 30%\033[0m" << endl;
+        cout << "\n\033[1;37mDAFTAR MEMBER   :\033[0m" << endl;
+        cout << "\033[1;36m" << left << setw(4) << "ID" << setw(15) << "NAMA" << setw(8) << "BULAN" 
+             << setw(15) << "TOTAL AWAL" << "\033[0m" << endl;
+        cout << "\033[1;36m------------------------------------------\033[0m" << endl;
         for(int idx : eligible) {
             int total = hargapaket(members[idx].namapaket, members[idx].detail.bulanMember);
-            cout << left << setw(4) << members[idx].id << setw(15) << members[idx].nama 
+            cout << "\033[1;37m" << left << setw(4) << members[idx].id << setw(15) << members[idx].nama 
                  << setw(8) << members[idx].detail.bulanMember
-                 << setw(15) << ("Rp " + to_string(total) + "K") << endl;
+                 << setw(15) << ("Rp " + to_string(total) + "K") << "\033[0m" << endl;
         }
-        cout << "------------------------------------------" << endl;
+        cout << "\033[1;36m------------------------------------------\033[0m" << endl;
         
-        cout << "\nmasukkan ID member untuk diberi diskon --> 0 untuk batal: ";
+        cout << "\n\033[1;37mmasukkan ID member untuk diberi diskon --> 0 untuk batal: \033[0m";
         int idPilih; cin >> idPilih; cin.ignore();
         if(idPilih == 0) return;
         
@@ -691,10 +768,10 @@ void keloladiskonmembership(member members[], int jumlahmember) {
         int total = hargapaket(members[foundIdx].namapaket, members[foundIdx].detail.bulanMember);
         int totalAkhir = total - (total * diskon / 100);
         
-        cout << "\n--- KONFIRMASI ---" << endl;
-        cout << "MEMBER: " << members[foundIdx].nama << " (ID: " << members[foundIdx].id << ")" << endl;
-        cout << "DURASI: " << members[foundIdx].detail.bulanMember << " bulan" << endl;
-        cout << "klik 1 untuk ACC, angka lain --> batal: ";
+        cout << "\n\033[1;35m--- KONFIRMASI ---\033[0m" << endl;
+        cout << "\033[1;36mMEMBER: \033[1;37m" << members[foundIdx].nama << " (ID: " << members[foundIdx].id << ")\033[0m" << endl;
+        cout << "\033[1;36mDURASI: \033[1;37m" << members[foundIdx].detail.bulanMember << " bulan\033[0m" << endl;
+        cout << "\033[1;33mklik 1 untuk ACC, angka lain --> batal: \033[0m";
         
         int konfirmasi; cin >> konfirmasi; cin.ignore();
         
@@ -704,8 +781,8 @@ void keloladiskonmembership(member members[], int jumlahmember) {
             
             savememberstoCSV(members, jumlahmember);
             
-            cout << "\n[OK] DISKON " << diskon << "% BERHASIL DITERAPKAN!" << endl;
-            cout << "data akhir setelah diskon: Rp " << totalAkhir << ".000" << endl;
+            cout << "\n\033[1;32m[OK] DISKON " << diskon << "% BERHASIL DITERAPKAN!\033[0m" << endl;
+            cout << "\033[1;36mdata akhir setelah diskon: \033[1;32mRp " << totalAkhir << ".000\033[0m" << endl;
             catatLog("diskon " + to_string(diskon) + "% untuk member ID " + to_string(idPilih));
         } else {
             MiloUtils::printWarning("pemberian diskon dibatalkan");
@@ -785,7 +862,7 @@ void readdatamember(member members[], int jumlahmember, string username) {
         }
         
         if (!ditemukan) {
-            cout << "\n[ERROR] BELUM JOIN MEMBER! silakan buat akun membership dulu.." << endl;
+            cout << "\n\033[1;31m[ERROR] BELUM JOIN MEMBER! silakan buat akun membership dulu..\033[0m" << endl;
         }
         
     } catch (const PADELEXCEPTION& e) {
@@ -799,27 +876,27 @@ void updatedatamember(member members[], int jumlahmember) {
     MiloUtils::clearScreen();
     try {
         ASSERT(jumlahmember > 0, "data member masih kosong");
-        cout << "\nDAFTAR MEMBER:" << endl;
+        cout << "\n\033[1;36mDAFTAR MEMBER:\033[0m" << endl;
         for (int i = 0; i < jumlahmember; i++) {
-            cout << "  [" << members[i].id << "] " << members[i].nama << " | PAKET: " << members[i].namapaket << endl;
+            cout << "\033[1;37m  [" << members[i].id << "] " << members[i].nama << " | PAKET: " << members[i].namapaket << " | SESI: " << members[i].detail.hari << " " << members[i].detail.jamsesi << "\033[0m" << endl;
         }
         
         int index;
-        cout << "\nID yang mau diupdate: ";
+        cout << "\n\033[1;37mID yang mau diupdate: \033[0m";
         cin >> index;
         cin.ignore();
         ASSERT(index > 0 && index <= jumlahmember, "ID MEMBER TIDAK VALID");
         
         int idx = index - 1;
-        cout << "\n--- UPDATE DATA MEMBER ---" << endl;
-        cout << "NAMA: " << members[idx].nama << endl;
-        cout << "PAKET SEKARANG: " << members[idx].namapaket << endl;
+        cout << "\n\033[1;33m--- UPDATE DATA MEMBER ---\033[0m" << endl;
+        cout << "\033[1;36mNAMA: \033[1;37m" << members[idx].nama << "\033[0m" << endl;
+        cout << "\033[1;36mPAKET SEKARANG: \033[1;37m" << members[idx].namapaket << "\033[0m" << endl;
         
         tampilkanpilihanpaket();
 
         int pilihanPaket;
         while (true) {
-            cout << "\nPILIH PAKET BARU (1-3): ";
+            cout << "\n\033[1;37mPILIH PAKET BARU (1-3): \033[0m";
             cin >> pilihanPaket;
             cin.ignore();
             
@@ -833,13 +910,13 @@ void updatedatamember(member members[], int jumlahmember) {
                 members[idx].namapaket = "STAR";
                 break;
             } else {
-                cout << "[!] Pilihan tidak valid! Masukkan angka 1-3." << endl;
+                cout << "\033[1;33m[!] Pilihan tidak valid! Masukkan angka 1-3.\033[0m" << endl;
             }
         }
         
         string infoHari = (members[idx].namapaket == "STAR") ? "Sabtu/Minggu" : "Senin-Jumat";
         while (true) {
-            cout << "\nHARI (" << infoHari << "): ";
+            cout << "\n\033[1;37mHARI (" << infoHari << "): \033[0m";
             getline(cin, members[idx].detail.hari);
             
             if (validasihari(members[idx].detail.hari, members[idx].namapaket)) {
@@ -851,44 +928,53 @@ void updatedatamember(member members[], int jumlahmember) {
                 }
                 break;
             } else {
-                cout << "[!] Hari tidak valid untuk paket " << members[idx].namapaket << "!" << endl;
+                cout << "\033[1;33m[!] Hari tidak valid untuk paket " << members[idx].namapaket << "!\033[0m" << endl;
                 cout << "    Paket " << members[idx].namapaket << " hanya bisa: " << infoHari << endl;
             }
         }
         
-        cout << "\n";
-        jamberdasarkanpaket(members[idx].namapaket);
+        tampilkanSesiTersedia(members[idx].namapaket, members[idx].detail.hari, members, jumlahmember);
         
         int maxJam = (members[idx].namapaket == "SUN") ? 6 : 7;
         int pilihanJam;
-        while (true) {
-            cout << "\nPILIH JAM SESI BARU (1-" << maxJam << "): ";
+        bool sesiValid = false;
+        
+        while (!sesiValid) {
+            cout << "\n\033[1;37mPILIH JAM SESI BARU (1-" << maxJam << "): \033[0m";
             cin >> pilihanJam;
             cin.ignore();
             
             if (pilihanJam >= 1 && pilihanJam <= maxJam) {
+                string jamsesi;
                 if (members[idx].namapaket == "SUN") {
                     int jamMulai = 5 + pilihanJam;
-                    members[idx].detail.jamsesi = to_string(jamMulai) + ".00-" + to_string(jamMulai + 1) + ".00";
+                    jamsesi = to_string(jamMulai) + ".00-" + to_string(jamMulai + 1) + ".00";
                 } else {
                     int jamMulai = 15 + pilihanJam;
-                    members[idx].detail.jamsesi = to_string(jamMulai) + ".00-" + to_string(jamMulai + 1) + ".00";
+                    jamsesi = to_string(jamMulai) + ".00-" + to_string(jamMulai + 1) + ".00";
                 }
-                break;
+                
+                if (cekKuotaTersedia(members[idx].namapaket, members[idx].detail.hari, jamsesi, members, jumlahmember, members[idx].id)) {
+                    members[idx].detail.jamsesi = jamsesi;
+                    sesiValid = true;
+                } else {
+                    cout << "\033[1;33m[!] Sesi sudah penuh! (maksimal " << MAX_PER_SESI << " member)\033[0m" << endl;
+                    tampilkanSesiTersedia(members[idx].namapaket, members[idx].detail.hari, members, jumlahmember);
+                }
             } else {
-                cout << "[!] Pilihan jam tidak valid! Masukkan angka 1-" << maxJam << "." << endl;
+                cout << "\033[1;33m[!] Pilihan jam tidak valid! Masukkan angka 1-" << maxJam << ".\033[0m" << endl;
             }
         }
         
         while (true) {
-            cout << "\nMAU JOIN BERAPA BULAN (1-12): ";
+            cout << "\n\033[1;37mMAU JOIN BERAPA BULAN (1-12): \033[0m";
             cin >> members[idx].detail.bulanMember;
             cin.ignore();
             
             if (members[idx].detail.bulanMember >= 1 && members[idx].detail.bulanMember <= 12) {
                 break;
             } else {
-                cout << "[!] Durasi harus antara 1-12 bulan! Silakan input kembali." << endl;
+                cout << "\033[1;33m[!] Durasi harus antara 1-12 bulan! Silakan input kembali.\033[0m" << endl;
             }
         }
         
@@ -900,12 +986,12 @@ void updatedatamember(member members[], int jumlahmember) {
         savememberstoCSV(members, jumlahmember);
         
         MiloUtils::printSuccess("UPDATE BERHASIL!");
-        cout << "   TOTAL PERTEMUAN : " << totalPertemuan << "x" << endl;
+        cout << "\033[1;36m   TOTAL PERTEMUAN : \033[1;37m" << totalPertemuan << "x\033[0m" << endl;
         if (members[idx].diskon_aktif) {
-            cout << "   DISKON          : " << members[idx].nominal_diskon << "%" << endl;
-            cout << "   TOTAL BAYAR     : Rp " << totalAkhir << ".000 (setelah diskon)" << endl;
+            cout << "\033[1;36m   DISKON          : \033[1;33m" << members[idx].nominal_diskon << "%\033[0m" << endl;
+            cout << "\033[1;36m   TOTAL BAYAR     : \033[1;32mRp " << totalAkhir << ".000 (setelah diskon)\033[0m" << endl;
         } else {
-            cout << "   TOTAL BAYAR     : Rp " << total << ".000" << endl;
+            cout << "\033[1;36m   TOTAL BAYAR     : \033[1;32mRp " << total << ".000\033[0m" << endl;
         }
         catatLog("update member ID " + to_string(members[idx].id));
     } catch (const PADELEXCEPTION& e) {
@@ -919,13 +1005,13 @@ void deletedatamember(member members[], int &jumlahmember) {
     MiloUtils::clearScreen();
     try {
         ASSERT(jumlahmember > 0, "data member masih kosong");
-        cout << "\nDAFTAR MEMBER:" << endl;
+        cout << "\n\033[1;36mDAFTAR MEMBER:\033[0m" << endl;
         for (int i = 0; i < jumlahmember; i++) {
-            cout << "  [" << members[i].id << "] " << members[i].nama << endl;
+            cout << "\033[1;37m  [" << members[i].id << "] " << members[i].nama << "\033[0m" << endl;
         }
         
         int index;
-        cout << "\nID yang mau dihapus: ";
+        cout << "\n\033[1;37mID yang mau dihapus: \033[0m";
         cin >> index;
         cin.ignore();
         ASSERT(index > 0 && index <= jumlahmember, "ID MEMBER TIDAK VALID");
@@ -955,14 +1041,14 @@ void menuadmin(member members[], int &jumlahmember, string userLogin) {
         try {
             cout << endl;
             MiloUtils::printHeader("ADMIN MENU - " + userLogin);
-            cout << "1. TAMPILKAN DATA" << endl;
-            cout << "2. KELOLA DISKON MEMBERSHIP" << endl;
-            cout << "3. UPDATE PAKET MEMBER" << endl;
-            cout << "4. HAPUS MEMBER" << endl;
-            cout << "5. LOG AKTIVITAS" << endl;
-            cout << "6. LOGOUT" << endl;
+            cout << "\n\033[1;32m1. TAMPILKAN DATA\033[0m" << endl;
+            cout << "\033[1;33m2. KELOLA DISKON MEMBERSHIP\033[0m" << endl;
+            cout << "\033[1;34m3. UPDATE PAKET MEMBER\033[0m" << endl;
+            cout << "\033[1;31m4. HAPUS MEMBER\033[0m" << endl;
+            cout << "\033[1;35m5. LOG AKTIVITAS\033[0m" << endl;
+            cout << "\033[1;36m6. LOGOUT\033[0m" << endl;
             MiloUtils::printSeparator();
-            cout << "PILIHAN (1-6): ";
+            cout << "\033[1;37mPILIHAN (1-6): \033[0m";
             cin >> pilihan;
             cin.ignore();
             ASSERT(pilihan >= 1 && pilihan <= 6, "PILIHAN TIDAK VALID!");
@@ -995,12 +1081,12 @@ void menumember(member members[], int &jumlahmember, string userLogin) {
         try {
             cout << endl;
             MiloUtils::printHeader("MEMBER MENU - " + userLogin);
-            cout << "1. LIHAT JADWAL & HARGA PAKET" << endl;
-            cout << "2. BUAT AKUN MEMBERSHIP" << endl;
-            cout << "3. LIHAT DATA SAYA" << endl;
-            cout << "4. LOGOUT" << endl;
+            cout << "\n\033[1;36m1. LIHAT JADWAL & HARGA PAKET\033[0m" << endl;
+            cout << "\033[1;32m2. BUAT AKUN MEMBERSHIP\033[0m" << endl;
+            cout << "\033[1;34m3. LIHAT DATA SAYA\033[0m" << endl;
+            cout << "\033[1;31m4. LOGOUT\033[0m" << endl;
             MiloUtils::printSeparator();
-            cout << "PILIHAN: ";
+            cout << "\033[1;37mPILIHAN: \033[0m";
             cin >> pilihan;
             cin.ignore();
             ASSERT(pilihan >= 1 && pilihan <= 4, "PILIHAN TIDAK VALID!");
@@ -1036,26 +1122,26 @@ int main() {
         
         loadmembersfromCSV(members, jumlahmember);
         if (jumlahmember > 0) {
-            cout << "[INFO] " << jumlahmember << " data member berhasil dimuat dari " << FILENAME << endl;
+            cout << "\033[1;32m[INFO] " << jumlahmember << " data member berhasil dimuat dari " << FILENAME << "\033[0m" << endl;
         }
         
         while (true) {
             try {
                 MiloUtils::clearScreen();
                 MiloUtils::printHeader("WELCOME TO MILO PADEL");
-                cout << "\n--- MENU UTAMA ---" << endl;
-                cout << "1. REGISTRASI AKUN BARU" << endl;
-                cout << "2. LOGIN" << endl;
-                cout << "3. KELUAR PROGRAM" << endl;
-                cout << "PILIHAN: ";
+                cout << "\n\033[1;33m--- MENU UTAMA ---\033[0m" << endl;
+                cout << "\033[1;32m1. REGISTRASI AKUN BARU\033[0m" << endl;
+                cout << "\033[1;34m2. LOGIN\033[0m" << endl;
+                cout << "\033[1;31m3. KELUAR PROGRAM\033[0m" << endl;
+                cout << "\033[1;37mPILIHAN: \033[0m";
                 int pilihanawal;
                 cin >> pilihanawal;
                 cin.ignore();
                 ASSERT(pilihanawal >= 1 && pilihanawal <= 3, "PILIHAN TIDAK VALID");
                 
                 if (pilihanawal == 1) {
-                    cout << "\n--- REGISTRASI AKUN ---" << endl;
-                    cout << "USERNAME: ";
+                    cout << "\n\033[1;33m--- REGISTRASI AKUN ---\033[0m" << endl;
+                    cout << "\033[1;37mUSERNAME: \033[0m";
                     getline(cin, inputnama);
                     bool usernameada = false;
                     for (int i = 0; i < jumlahuser; i++) {
@@ -1065,7 +1151,7 @@ int main() {
                         }
                     }
                     ASSERT(!usernameada, "username sudah digunakan!");
-                    cout << "PASSWORD: ";
+                    cout << "\033[1;37mPASSWORD: \033[0m";
                     getline(cin, inputpw);
                     ASSERT(inputpw.length() >= 3, "password minimal 3 karakter!");
                     users[jumlahuser].username = inputnama;
@@ -1074,12 +1160,12 @@ int main() {
                     jumlahuser++;
                     MiloUtils::printSuccess("REGISTRASI BERHASIL! SILAKAN LOGIN");
                 } else if (pilihanawal == 2) {
-                    cout << "\n--- LOGIN ---" << endl;
+                    cout << "\n\033[1;33m--- LOGIN ---\033[0m" << endl;
                     bool loginSukses = false;
                     for (int percobaan = 0; percobaan < 3; percobaan++) {
-                        cout << "USERNAME: ";
+                        cout << "\033[1;37mUSERNAME: \033[0m";
                         getline(cin, inputnama);
-                        cout << "PASSWORD: ";
+                        cout << "\033[1;37mPASSWORD: \033[0m";
                         getline(cin, inputpw);
                         bool usnbenar = false, pwbenar = false;
                         for (int i = 0; i < jumlahuser; i++) {
@@ -1098,10 +1184,10 @@ int main() {
                             break;
                         }
                         MiloUtils::printError("LOGIN GAGAL!");
-                        if (!usnbenar) cout << "  username tidak ditemukan!" << endl;
-                        else cout << "  password salah!" << endl;
+                        if (!usnbenar) cout << "\033[1;33m  username tidak ditemukan!\033[0m" << endl;
+                        else cout << "\033[1;33m  password salah!\033[0m" << endl;
                         ASSERT(percobaan < 2, "AKSES DITOLAK! GAGAL LOGIN 3x");
-                        cout << "  sisa percobaan: " << (2 - percobaan) << endl;
+                        cout << "\033[1;36m  sisa percobaan: " << (2 - percobaan) << "\033[0m" << endl;
                     }
                     ASSERT(loginSukses, "LOGIN GAGAL");
                     if (roleLogin == "admin") menuadmin(members, jumlahmember, userLogin);
