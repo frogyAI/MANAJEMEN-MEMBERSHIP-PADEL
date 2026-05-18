@@ -170,6 +170,7 @@ int hitungdiskon(int bulan) {
     return 0;
 }
 
+<<<<<<< HEAD
 // ==========================================
 // FUNGSI TABEL PAKET & JAM (DIPISAH)
 // ==========================================
@@ -271,6 +272,91 @@ void tampilkanJamBerdasarkanPaket(string namapaket) {
         tampilkanJamMOON();
     } else if (namapaket == "STAR") {
         tampilkanJamSTAR();
+=======
+void infopilihanjam(string namapaket) {
+  clitable::Table tabel;
+      tabel.addTitle("PILIH JAM SESI");
+
+      tabel.addColumn(clitable::Column("No", clitable::Column::CENTER_ALIGN,
+                      clitable::Column::CENTER_ALIGN, 1, 5, clitable::Column::RESIZABLE));
+      tabel.addColumn(clitable::Column("JAM SESI",clitable::Column::CENTER_ALIGN,
+                      clitable::Column::CENTER_ALIGN, 1, 20,clitable::Column::RESIZABLE));
+            int totalSesi = 0;
+        if (namapaket == "SUN") {
+               totalSesi = 10;
+                    for (int i = 1; i <= totalSesi; i++) {
+                string row[] = {
+                to_string(i),
+                to_string(5+i) + ".00 - " +
+                to_string(6+i) + ".00"
+            };
+               tabel.addRow(row);
+        }
+
+    } else if (namapaket == "MOON" || namapaket == "STAR") {
+
+        totalSesi = 7;
+
+        for (int i = 1; i <= totalSesi; i++) {
+
+            string row[] = {
+                to_string(i),
+                to_string(15+i) + ".00 - " +
+                to_string(16+i) + ".00"
+            };
+
+            tabel.addRow(row);
+        }
+    }
+
+    cout << tabel.draw();
+
+    int pilihan;
+
+    do {
+
+        cout << "\nPilih nomor sesi : ";
+        cin >> pilihan;
+
+        if (cin.fail()) {
+
+            cin.clear();
+
+            cin.ignore(
+                numeric_limits<streamsize>::max(),
+                '\n'
+            );
+
+            cout << "Input harus berupa angka!\n";
+            continue;
+        }
+
+        if (pilihan < 1 || pilihan > totalSesi) {
+            cout << "Nomor sesi tidak tersedia!\n";
+        }
+
+    } while (pilihan < 1 || pilihan > totalSesi);
+
+    cout << "\nSesi berhasil dipilih.\n";
+}
+
+
+
+string jamsesi(string namapaket, int pilihan) {
+    try {
+        if (namapaket == "SUN" && pilihan >= 1 && pilihan <= 10) {
+            int start = 5 + pilihan;
+            return to_string(start) + ".00-" + to_string(start + 1) + ".00";
+        } else if ((namapaket == "MOON" || namapaket == "STAR") && pilihan >= 1 && pilihan <= 7) {
+            int start = 15 + pilihan;
+            return to_string(start) + ".00-" + to_string(start + 1) + ".00";
+        } else {
+            throw PADELEXCEPTION("pilihan jam tidak valid!");
+        }
+    } catch (const PADELEXCEPTION& e) {
+        cout << "[!] " << e.what() << endl;
+        return "-";
+>>>>>>> 32b12dc76af6a3f4a6cf8e4064477041b956f63c
     }
 }
 
