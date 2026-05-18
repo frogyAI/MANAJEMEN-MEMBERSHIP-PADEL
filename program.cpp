@@ -142,32 +142,6 @@ bool validasihari(string hari, string namapaket) {
     return false;
 }
 
-string inputharivalid(string namapaket) {
-    string hari;
-    while (true) {
-        try {
-            cout << "MAU PADEL DI HARI APA (" << infohari(namapaket) << "): ";
-            getline(cin, hari);
-            ASSERT(!hari.empty(), "hari tidak boleh kosong");
-            if (validasihari(hari, namapaket)) {
-                if (hari.length() > 0) {
-                    hari[0] = toupper(hari[0]);
-                    for (int i = 1; i < hari.length(); i++) hari[i] = tolower(hari[i]);
-                }
-                return hari;
-            } else {
-                throw PADELEXCEPTION("hari tidak valid untuk paket ini!");
-            }
-        } catch (const PADELEXCEPTION& e) {
-            cout << "[!] " << e.what() << " ";
-            if (namapaket == "SUN" || namapaket == "MOON")
-                cout << "paket weekday hanya bisa: Senin-Jumat" << endl;
-            else
-                cout << "paket weekend hanya bisa: Sabtu&Minggu" << endl;
-        }
-    }
-}
-
 int hargapaket(string namapaket, int bulan) {
     try {
         ASSERT(bulan >= 0, "durasi tidak boleh negatif");
@@ -196,30 +170,112 @@ int hitungdiskon(int bulan) {
     return 0;
 }
 
-void infopilihanjam(string namapaket) {
+// ==========================================
+// FUNGSI TABEL PAKET & JAM (DIPISAH)
+// ==========================================
 
+// Fungsi untuk menampilkan pilihan 3 paket dalam 1 tabel kecil
+void tampilkanPilihanPaket() {
+    clitable::Table tabel;
+    
+    tabel.addColumn(clitable::Column("NO", clitable::Column::CENTER_ALIGN, 
+                    clitable::Column::CENTER_ALIGN, 1, 5, clitable::Column::RESIZABLE));
+    tabel.addColumn(clitable::Column("PAKET", clitable::Column::CENTER_ALIGN, 
+                    clitable::Column::CENTER_ALIGN, 1, 15, clitable::Column::RESIZABLE));
+    tabel.addColumn(clitable::Column("HARI", clitable::Column::CENTER_ALIGN, 
+                    clitable::Column::CENTER_ALIGN, 1, 20, clitable::Column::RESIZABLE));
+    tabel.addColumn(clitable::Column("HARGA/SESI", clitable::Column::CENTER_ALIGN, 
+                    clitable::Column::RIGHT_ALIGN, 1, 15, clitable::Column::RESIZABLE));
+    
+    tabel.addTitle("PILIH PAKET MEMBERSHIP");
+    
+    string row1[] = {"1", "SUN", "Senin-Jumat", "Rp 450.000"};
+    string row2[] = {"2", "MOON", "Senin-Jumat", "Rp 500.000"};
+    string row3[] = {"3", "STAR", "Sabtu-Minggu", "Rp 650.000"};
+    
+    tabel.addRow(row1);
+    tabel.addRow(row2);
+    tabel.addRow(row3);
+    
+    cout << tabel.draw() << endl;
 }
 
-string jamsesi(string namapaket, int pilihan) {
-    try {
-        if (namapaket == "SUN" && pilihan >= 1 && pilihan <= 10) {
-            int start = 5 + pilihan;
-            return to_string(start) + ".00-" + to_string(start + 1) + ".00";
-        } else if ((namapaket == "MOON" || namapaket == "STAR") && pilihan >= 1 && pilihan <= 7) {
-            int start = 15 + pilihan;
-            return to_string(start) + ".00-" + to_string(start + 1) + ".00";
-        } else {
-            throw PADELEXCEPTION("pilihan jam tidak valid!");
-        }
-    } catch (const PADELEXCEPTION& e) {
-        cout << "[!] " << e.what() << endl;
-        return "-";
+// Fungsi untuk menampilkan tabel jam paket SUN (6 pilihan: 06.00-12.00)
+void tampilkanJamSUN() {
+    clitable::Table tabel;
+    
+    tabel.addColumn(clitable::Column("NO", clitable::Column::CENTER_ALIGN, 
+                    clitable::Column::CENTER_ALIGN, 1, 5, clitable::Column::RESIZABLE));
+    tabel.addColumn(clitable::Column("JAM SESI", clitable::Column::CENTER_ALIGN, 
+                    clitable::Column::CENTER_ALIGN, 1, 20, clitable::Column::RESIZABLE));
+    
+    tabel.addTitle("PAKET SUN - Pilih Jam Sesi (06.00-12.00)");
+    
+    for (int i = 1; i <= 6; i++) {
+        int jamMulai = 5 + i;
+        string jam = to_string(jamMulai) + ".00-" + to_string(jamMulai + 1) + ".00";
+        string row[] = {to_string(i), jam};
+        tabel.addRow(row);
     }
-    return "-";
+    
+    cout << tabel.draw() << endl;
+}
+
+// Fungsi untuk menampilkan tabel jam paket MOON (7 pilihan: 16.00-23.00)
+void tampilkanJamMOON() {
+    clitable::Table tabel;
+    
+    tabel.addColumn(clitable::Column("NO", clitable::Column::CENTER_ALIGN, 
+                    clitable::Column::CENTER_ALIGN, 1, 5, clitable::Column::RESIZABLE));
+    tabel.addColumn(clitable::Column("JAM SESI", clitable::Column::CENTER_ALIGN, 
+                    clitable::Column::CENTER_ALIGN, 1, 20, clitable::Column::RESIZABLE));
+    
+    tabel.addTitle("PAKET MOON - Pilih Jam Sesi (16.00-23.00)");
+    
+    for (int i = 1; i <= 7; i++) {
+        int jamMulai = 15 + i;
+        string jam = to_string(jamMulai) + ".00-" + to_string(jamMulai + 1) + ".00";
+        string row[] = {to_string(i), jam};
+        tabel.addRow(row);
+    }
+    
+    cout << tabel.draw() << endl;
+}
+
+// Fungsi untuk menampilkan tabel jam paket STAR (7 pilihan: 16.00-23.00)
+void tampilkanJamSTAR() {
+    clitable::Table tabel;
+    
+    tabel.addColumn(clitable::Column("NO", clitable::Column::CENTER_ALIGN, 
+                    clitable::Column::CENTER_ALIGN, 1, 5, clitable::Column::RESIZABLE));
+    tabel.addColumn(clitable::Column("JAM SESI", clitable::Column::CENTER_ALIGN, 
+                    clitable::Column::CENTER_ALIGN, 1, 20, clitable::Column::RESIZABLE));
+    
+    tabel.addTitle("PAKET STAR - Pilih Jam Sesi (16.00-23.00)");
+    
+    for (int i = 1; i <= 7; i++) {
+        int jamMulai = 15 + i;
+        string jam = to_string(jamMulai) + ".00-" + to_string(jamMulai + 1) + ".00";
+        string row[] = {to_string(i), jam};
+        tabel.addRow(row);
+    }
+    
+    cout << tabel.draw() << endl;
+}
+
+// Fungsi untuk menampilkan jam berdasarkan paket yang dipilih
+void tampilkanJamBerdasarkanPaket(string namapaket) {
+    if (namapaket == "SUN") {
+        tampilkanJamSUN();
+    } else if (namapaket == "MOON") {
+        tampilkanJamMOON();
+    } else if (namapaket == "STAR") {
+        tampilkanJamSTAR();
+    }
 }
 
 void tampilkaninfopaket() {
- clitable::Table tabel;
+    clitable::Table tabel;
     
     tabel.addColumn(clitable::Column("PAKET", clitable::Column::CENTER_ALIGN, 
                     clitable::Column::CENTER_ALIGN, 1, 8, clitable::Column::RESIZABLE));
@@ -241,7 +297,6 @@ void tampilkaninfopaket() {
     cout << tabel.draw();   
     cout << "\n[INFO] 1 bulan = 4 pertemuan (1x seminggu)" << endl;
 }
-
 
 void sortnamadescending(member arr[], int n) {
     sort(arr, arr + n, [](const member& a, const member& b) {
@@ -301,7 +356,6 @@ void tampilkanLog() {
     }
     cout << "=====================" << endl;
 }
-
 
 const string FILENAME = "data_member.csv";
 
@@ -380,37 +434,79 @@ void createdatamember(member members[], int &jumlahmember, string username) {
         getline(cin, baru.nama);
         ASSERT(!baru.nama.empty(), "nama tidak boleh kosong");
         
-        tampilkaninfopaket();
-        cout << "PAKET(SUN/MOON/STAR): ";
-        getline(cin, baru.namapaket);
+        // [STEP 1] Tampilkan pilihan paket
+        tampilkanPilihanPaket();
         
-        for (char &c : baru.namapaket) {
-            c = toupper(c);
+        // [STEP 2] Input pilihan paket (1-3)
+        int pilihanPaket;
+        while (true) {
+            cout << "\nPILIH PAKET (1-3): ";
+            cin >> pilihanPaket;
+            cin.ignore();
+            
+            if (pilihanPaket == 1) {
+                baru.namapaket = "SUN";
+                break;
+            } else if (pilihanPaket == 2) {
+                baru.namapaket = "MOON";
+                break;
+            } else if (pilihanPaket == 3) {
+                baru.namapaket = "STAR";
+                break;
+            } else {
+                cout << "[!] Pilihan tidak valid! Masukkan angka 1-3." << endl;
+            }
         }
         
-        if (baru.namapaket != "SUN" && baru.namapaket != "MOON" && baru.namapaket != "STAR") {
-            throw PADELEXCEPTION("PAKET TIDAK VALID!");
+        // [STEP 3] Input hari (validasi sesuai paket)
+        string infoHari = (baru.namapaket == "STAR") ? "Sabtu/Minggu" : "Senin-Jumat";
+        while (true) {
+            cout << "\nHARI (" << infoHari << "): ";
+            getline(cin, baru.detail.hari);
+            
+            if (validasihari(baru.detail.hari, baru.namapaket)) {
+                // Format hari: huruf pertama kapital, sisanya kecil
+                if (baru.detail.hari.length() > 0) {
+                    baru.detail.hari[0] = toupper(baru.detail.hari[0]);
+                    for (int i = 1; i < baru.detail.hari.length(); i++) {
+                        baru.detail.hari[i] = tolower(baru.detail.hari[i]);
+                    }
+                }
+                break;
+            } else {
+                cout << "[!] Hari tidak valid untuk paket " << baru.namapaket << "!" << endl;
+                cout << "    Paket " << baru.namapaket << " hanya bisa: " << infoHari << endl;
+            }
         }
         
-        baru.detail.hari = inputharivalid(baru.namapaket);
-        infopilihanjam(baru.namapaket);
+        // [STEP 4] Tampilkan tabel jam SESUAI paket yang dipilih
+        cout << "\n";
+        tampilkanJamBerdasarkanPaket(baru.namapaket);
         
+        // [STEP 5] Input jam sesi
+        int maxJam = (baru.namapaket == "SUN") ? 6 : 7;
         int pilihanJam;
         while (true) {
-            cout << "JAM BERAPA (1-" << (baru.namapaket == "SUN" ? "10" : "7") << "): ";
+            cout << "\nPILIH JAM SESI (1-" << maxJam << "): ";
             cin >> pilihanJam;
             cin.ignore();
             
-            try {
-                baru.detail.jamsesi = jamsesi(baru.namapaket, pilihanJam);
-                if (baru.detail.jamsesi != "-") {
-                    break;
+            if (pilihanJam >= 1 && pilihanJam <= maxJam) {
+                // Generate jam sesi
+                if (baru.namapaket == "SUN") {
+                    int jamMulai = 5 + pilihanJam;
+                    baru.detail.jamsesi = to_string(jamMulai) + ".00-" + to_string(jamMulai + 1) + ".00";
+                } else {
+                    int jamMulai = 15 + pilihanJam;
+                    baru.detail.jamsesi = to_string(jamMulai) + ".00-" + to_string(jamMulai + 1) + ".00";
                 }
-            } catch (const PADELEXCEPTION& e) {
-                cout << "[!] " << e.what() << endl;
+                break;
+            } else {
+                cout << "[!] Pilihan jam tidak valid! Masukkan angka 1-" << maxJam << "." << endl;
             }
         }
-
+        
+        // [STEP 6] Input durasi bulan
         while (true) {
             cout << "\nMAU JOIN BERAPA BULAN (1-12): ";
             cin >> baru.detail.bulanMember;
@@ -716,8 +812,6 @@ void readdatamember(member members[], int jumlahmember, string username) {
     }
 }
 
-
-
 void updatedatamember(member members[], int jumlahmember) {
     MiloUtils::clearScreen();
     try {
@@ -738,26 +832,88 @@ void updatedatamember(member members[], int jumlahmember) {
         cout << "NAMA: " << members[idx].nama << endl;
         cout << "PAKET SEKARANG: " << members[idx].namapaket << endl;
         
-        tampilkaninfopaket();
-        cout << "PAKET BARU (SUN/MOON/STAR): ";
-        getline(cin, members[idx].namapaket);
+        // [STEP 1] Tampilkan pilihan paket
+        tampilkanPilihanPaket();
         
-        if (members[idx].namapaket != "SUN" && members[idx].namapaket != "MOON" && members[idx].namapaket != "STAR") {
-            throw PADELEXCEPTION("PAKET TIDAK VALID!");
+        // [STEP 2] Input pilihan paket baru (1-3)
+        int pilihanPaket;
+        while (true) {
+            cout << "\nPILIH PAKET BARU (1-3): ";
+            cin >> pilihanPaket;
+            cin.ignore();
+            
+            if (pilihanPaket == 1) {
+                members[idx].namapaket = "SUN";
+                break;
+            } else if (pilihanPaket == 2) {
+                members[idx].namapaket = "MOON";
+                break;
+            } else if (pilihanPaket == 3) {
+                members[idx].namapaket = "STAR";
+                break;
+            } else {
+                cout << "[!] Pilihan tidak valid! Masukkan angka 1-3." << endl;
+            }
         }
         
-        members[idx].detail.hari = inputharivalid(members[idx].namapaket);
-        infopilihanjam(members[idx].namapaket);
-        cout << "pilih jam sesi (1-" << (members[idx].namapaket == "SUN" ? "10" : "7") << "): ";
-        int pilihanJam;
-        cin >> pilihanJam;
-        cin.ignore();
-        members[idx].detail.jamsesi = jamsesi(members[idx].namapaket, pilihanJam);
+        // [STEP 3] Input hari (validasi sesuai paket)
+        string infoHari = (members[idx].namapaket == "STAR") ? "Sabtu/Minggu" : "Senin-Jumat";
+        while (true) {
+            cout << "\nHARI (" << infoHari << "): ";
+            getline(cin, members[idx].detail.hari);
+            
+            if (validasihari(members[idx].detail.hari, members[idx].namapaket)) {
+                if (members[idx].detail.hari.length() > 0) {
+                    members[idx].detail.hari[0] = toupper(members[idx].detail.hari[0]);
+                    for (int i = 1; i < members[idx].detail.hari.length(); i++) {
+                        members[idx].detail.hari[i] = tolower(members[idx].detail.hari[i]);
+                    }
+                }
+                break;
+            } else {
+                cout << "[!] Hari tidak valid untuk paket " << members[idx].namapaket << "!" << endl;
+                cout << "    Paket " << members[idx].namapaket << " hanya bisa: " << infoHari << endl;
+            }
+        }
         
-        cout << "\nMAU JOIN BERAPA BULAN: ";
-        cin >> members[idx].detail.bulanMember;
-        cin.ignore();
-        ASSERT(members[idx].detail.bulanMember > 0, "durasi harus lebih dari 0 bulan");
+        // [STEP 4] Tampilkan tabel jam SESUAI paket yang dipilih
+        cout << "\n";
+        tampilkanJamBerdasarkanPaket(members[idx].namapaket);
+        
+        // [STEP 5] Input jam sesi
+        int maxJam = (members[idx].namapaket == "SUN") ? 6 : 7;
+        int pilihanJam;
+        while (true) {
+            cout << "\nPILIH JAM SESI BARU (1-" << maxJam << "): ";
+            cin >> pilihanJam;
+            cin.ignore();
+            
+            if (pilihanJam >= 1 && pilihanJam <= maxJam) {
+                if (members[idx].namapaket == "SUN") {
+                    int jamMulai = 5 + pilihanJam;
+                    members[idx].detail.jamsesi = to_string(jamMulai) + ".00-" + to_string(jamMulai + 1) + ".00";
+                } else {
+                    int jamMulai = 15 + pilihanJam;
+                    members[idx].detail.jamsesi = to_string(jamMulai) + ".00-" + to_string(jamMulai + 1) + ".00";
+                }
+                break;
+            } else {
+                cout << "[!] Pilihan jam tidak valid! Masukkan angka 1-" << maxJam << "." << endl;
+            }
+        }
+        
+        // [STEP 6] Input durasi bulan
+        while (true) {
+            cout << "\nMAU JOIN BERAPA BULAN (1-12): ";
+            cin >> members[idx].detail.bulanMember;
+            cin.ignore();
+            
+            if (members[idx].detail.bulanMember >= 1 && members[idx].detail.bulanMember <= 12) {
+                break;
+            } else {
+                cout << "[!] Durasi harus antara 1-12 bulan! Silakan input kembali." << endl;
+            }
+        }
         
         members[idx].detail.harga = hargapaket(members[idx].namapaket);
         int totalPertemuan = hitungpertemuan(members[idx].detail.bulanMember);
