@@ -395,6 +395,7 @@ void createdatamember(member members[], int &jumlahmember, string username) {
         for (char &c : baru.namapaket) {
             c = toupper(c);
         }
+        // [END PERBAIKAN]
         
         if (baru.namapaket != "SUN" && baru.namapaket != "MOON" && baru.namapaket != "STAR") {
             throw PADELEXCEPTION("PAKET TIDAK VALID!");
