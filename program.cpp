@@ -197,14 +197,7 @@ int hitungdiskon(int bulan) {
 }
 
 void infopilihanjam(string namapaket) {
-    cout << "\n--- PILIH JAM SESI ---" << endl;
-    if (namapaket == "SUN") {
-        for (int i = 1; i <= 10; i++)
-            cout << i << ". " << (5+i) << ".00-" << (6+i) << ".00" << endl;
-    } else if (namapaket == "MOON" || namapaket == "STAR") {
-        for (int i = 1; i <= 7; i++)
-            cout << i << ". " << (15+i) << ".00-" << (16+i) << ".00" << endl;
-    }
+
 }
 
 string jamsesi(string namapaket, int pilihan) {
@@ -391,11 +384,9 @@ void createdatamember(member members[], int &jumlahmember, string username) {
         cout << "PAKET(SUN/MOON/STAR): ";
         getline(cin, baru.namapaket);
         
-        // [PERBAIKAN] KONVERSI INPUT PAKET KE UPPERCASE
         for (char &c : baru.namapaket) {
             c = toupper(c);
         }
-        // [END PERBAIKAN]
         
         if (baru.namapaket != "SUN" && baru.namapaket != "MOON" && baru.namapaket != "STAR") {
             throw PADELEXCEPTION("PAKET TIDAK VALID!");
