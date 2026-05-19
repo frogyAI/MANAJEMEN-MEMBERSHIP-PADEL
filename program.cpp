@@ -134,7 +134,7 @@ bool cekKuotaTersedia(string namapaket, string hari, string jamsesi, member memb
     return currentCount < MAX_PER_SESI;
 }
 
-void tampilkanSesiTersedia(string namapaket, string hari, member members[], int jumlahmember) {
+void tampilkansesitersedia(string namapaket, string hari, member members[], int jumlahmember) {
     cout << "\n\033[1;35m=== SESI TERSEDIA UNTUK HARI " << hari << " ===\033[0m" << endl;
     int maxJam = (namapaket == "SUN") ? 6 : 7;
     vector<pair<int, string>> sesiTersedia;
@@ -470,22 +470,38 @@ void savememberstoCSV(member members[], int jumlahmember) {
     file.close();
 }
 
-void createdatamember(member members[], int &jumlahmember, string username) {
+// PERBAIKAN: Hapus parameter username, tambahkan input username baru dengan validasi
+void createdatamember(member members[], int &jumlahmember) {
     MiloUtils::clearScreen();
     try {
-        for (int i = 0; i < jumlahmember; i++) {
-            if (members[i].username == username) {
-                throw PADELEXCEPTION("MEMBER SUDAH ADA!");
-            }
-        }
         ASSERT(jumlahmember < MAX_MEMBER, "kapasitas member penuh");
         
         cout << "\n\033[1;33m--- BUAT AKUN MEMBER ---\033[0m" << endl;
         member baru;
         baru.id = (jumlahmember > 0) ? members[jumlahmember-1].id + 1 : 1;
-        baru.username = username;
         baru.diskon_aktif = false;
         baru.nominal_diskon = 0;
+        
+        // Input username baru untuk member dengan validasi duplikasi
+        while (true) {
+            cout << "\033[1;37mUSERNAME: \033[0m";
+            getline(cin, baru.username);
+            ASSERT(!baru.username.empty(), "username tidak boleh kosong");
+            
+            // Cek apakah username sudah ada di database member
+            bool usernameada = false;
+            for (int i = 0; i < jumlahmember; i++) {
+                if (members[i].username == baru.username) {
+                    usernameada = true;
+                    break;
+                }
+            }
+            if (usernameada) {
+                cout << "\033[1;33m[!] Username sudah digunakan! Silakan gunakan username lain.\033[0m" << endl;
+                continue;
+            }
+            break;
+        }
         
         cout << "\033[1;37mNAMA: \033[0m";
         getline(cin, baru.nama);
@@ -532,7 +548,7 @@ void createdatamember(member members[], int &jumlahmember, string username) {
             }
         }
         
-        tampilkanSesiTersedia(baru.namapaket, baru.detail.hari, members, jumlahmember);
+        tampilkansesitersedia(baru.namapaket, baru.detail.hari, members, jumlahmember);
         
         int maxJam = (baru.namapaket == "SUN") ? 6 : 7;
         int pilihanJam;
@@ -558,7 +574,7 @@ void createdatamember(member members[], int &jumlahmember, string username) {
                     sesiValid = true;
                 } else {
                     cout << "\033[1;33m[!] Sesi sudah penuh! (maksimal " << MAX_PER_SESI << " member)\033[0m" << endl;
-                    tampilkanSesiTersedia(baru.namapaket, baru.detail.hari, members, jumlahmember);
+                    tampilkansesitersedia(baru.namapaket, baru.detail.hari, members, jumlahmember);
                 }
             } else {
                 cout << "\033[1;33m[!] Pilihan jam tidak valid! Masukkan angka 1-" << maxJam << ".\033[0m" << endl;
@@ -935,7 +951,7 @@ void updatedatamember(member members[], int jumlahmember) {
             }
         }
         
-        tampilkanSesiTersedia(members[idx].namapaket, members[idx].detail.hari, members, jumlahmember);
+        tampilkansesitersedia(members[idx].namapaket, members[idx].detail.hari, members, jumlahmember);
         
         int maxJam = (members[idx].namapaket == "SUN") ? 6 : 7;
         int pilihanJam;
@@ -961,7 +977,7 @@ void updatedatamember(member members[], int jumlahmember) {
                     sesiValid = true;
                 } else {
                     cout << "\033[1;33m[!] Sesi sudah penuh! (maksimal " << MAX_PER_SESI << " member)\033[0m" << endl;
-                    tampilkanSesiTersedia(members[idx].namapaket, members[idx].detail.hari, members, jumlahmember);
+                    tampilkansesitersedia(members[idx].namapaket, members[idx].detail.hari, members, jumlahmember);
                 }
             } else {
                 cout << "\033[1;33m[!] Pilihan jam tidak valid! Masukkan angka 1-" << maxJam << ".\033[0m" << endl;
@@ -1057,7 +1073,7 @@ void menuadmin(member members[], int &jumlahmember, string userLogin) {
             ASSERT(pilihan >= 1 && pilihan <= 7, "PILIHAN TIDAK VALID!");
             
             switch (pilihan) {
-                case 1: createdatamember(members, jumlahmember, userLogin); break;
+                case 1: createdatamember(members, jumlahmember); break;
                 case 2: menutampildata(members, jumlahmember); break;
                 case 3: keloladiskonmembership(members, jumlahmember); break;
                 case 4: updatedatamember(members, jumlahmember); break;
@@ -1097,7 +1113,7 @@ void menumember(member members[], int &jumlahmember, string userLogin) {
             
             switch (pilihan) {
                 case 1: tampilkaninfopaket(); break;
-                case 2: createdatamember(members, jumlahmember, userLogin); break;
+                case 2: createdatamember(members, jumlahmember); break;
                 case 3: readdatamember(members, jumlahmember, userLogin); break;
                 case 4:
                     MiloUtils::printSuccess("BERHASIL LOGOUT!");
