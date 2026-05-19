@@ -8,7 +8,7 @@ id,nama,username,namapaket,hari,jamsesi,bulanMember,harga,diskon_aktif,nominal_d
 7,Eleanor,eleanor,SUN,Jumat,8.00-9.00,12,450,1,30
 8,Felix,felix,MOON,Senin,19.00-20.00,1,500,0,0
 9,Giselle,giselle,STAR,Sabtu,20.00-21.00,8,650,1,15
-10,Hayden,hayden,SUN,Selasa,9.00-10.00,5,450,0,0
+10,Hayden,hayden,MOON,Rabu,18.00-19.00,7,500,0,0
 11,Isabelle,isabelle,MOON,Rabu,20.00-21.00,11,500,1,30
 12,Jaxon,jaxon,STAR,Minggu,21.00-22.00,6,650,1,15
 13,Kayla,kayla,SUN,Kamis,10.00-11.00,3,450,0,0
@@ -19,6 +19,3 @@ id,nama,username,namapaket,hari,jamsesi,bulanMember,harga,diskon_aktif,nominal_d
 18,Phoenix,phoenix,STAR,Minggu,17.00-18.00,12,650,1,30
 19,Quinn,quinn,SUN,Rabu,12.00-13.00,7,450,1,15
 20,Riley,riley,MOON,Kamis,16.00-17.00,10,500,1,30
-21,risma,tirizzzmen,SUN,Kamis,7.00-8.00,1,450,0,0
-22,r,r,MOON,Kamis,17.00-18.00,12,500,0,0
-23,mey,mey,SUN,Rabu,7.00-8.00,3,450,0,0
