@@ -21,10 +21,12 @@ namespace MiloUtils {
     
     void printHeader(const string& title) {
         int width = 39;
+        int padding = (width + title.length()) / 2;
         string border = "+=======================================+";
         cout << "\n\033[1;36m" << border << "\033[0m" << endl;
-        cout << "\033[1;33m| " << left << setw(width) << title << " |\033[0m" << endl;
+        cout << "\033[1;33m|" << setw(padding) << title << setw(width - padding + 1) << "|\033[0m" << endl;
         cout << "\033[1;36m" << border << "\033[0m" << endl;
+        
     }
     
     void printSeparator() {
@@ -1041,25 +1043,27 @@ void menuadmin(member members[], int &jumlahmember, string userLogin) {
         try {
             cout << endl;
             MiloUtils::printHeader("ADMIN MENU - " + userLogin);
-            cout << "\n\033[1;32m1. TAMPILKAN DATA\033[0m" << endl;
-            cout << "\033[1;33m2. KELOLA DISKON MEMBERSHIP\033[0m" << endl;
-            cout << "\033[1;34m3. UPDATE PAKET MEMBER\033[0m" << endl;
-            cout << "\033[1;31m4. HAPUS MEMBER\033[0m" << endl;
-            cout << "\033[1;35m5. LOG AKTIVITAS\033[0m" << endl;
-            cout << "\033[1;36m6. LOGOUT\033[0m" << endl;
+            cout << "\n\033[1;34m1. BUAT AKUN MEMBER\033[0m" << endl;
+            cout << "\033[1;32m2. TAMPILKAN DATA\033[0m" << endl;
+            cout << "\033[1;33m3. KELOLA DISKON MEMBERSHIP\033[0m" << endl;
+            cout << "\033[1;34m4. UPDATE PAKET MEMBER\033[0m" << endl;
+            cout << "\033[1;31m5. HAPUS MEMBER\033[0m" << endl;
+            cout << "\033[1;35m6. LOG AKTIVITAS\033[0m" << endl;
+            cout << "\033[1;36m7. LOGOUT\033[0m" << endl;
             MiloUtils::printSeparator();
-            cout << "\033[1;37mPILIHAN (1-6): \033[0m";
+            cout << "\033[1;37mPILIHAN (1-7): \033[0m";
             cin >> pilihan;
             cin.ignore();
-            ASSERT(pilihan >= 1 && pilihan <= 6, "PILIHAN TIDAK VALID!");
+            ASSERT(pilihan >= 1 && pilihan <= 7, "PILIHAN TIDAK VALID!");
             
             switch (pilihan) {
-                case 1: menutampildata(members, jumlahmember); break;
-                case 2: keloladiskonmembership(members, jumlahmember); break;
-                case 3: updatedatamember(members, jumlahmember); break;
-                case 4: deletedatamember(members, jumlahmember); break;
-                case 5: tampilkanLog(); MiloUtils::pause(); break;
-                case 6:
+                case 1: createdatamember(members, jumlahmember, userLogin); break;
+                case 2: menutampildata(members, jumlahmember); break;
+                case 3: keloladiskonmembership(members, jumlahmember); break;
+                case 4: updatedatamember(members, jumlahmember); break;
+                case 5: deletedatamember(members, jumlahmember); break;
+                case 6: tampilkanLog(); MiloUtils::pause(); break;
+                case 7:
                     MiloUtils::printSuccess("BERHASIL LOGOUT!");
                     menuberjalan = false;
                     break;
